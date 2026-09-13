@@ -1,0 +1,22 @@
+taco_category,trashnet6_class,decision_notes
+Aluminium foil,metal,draft_review_with_taco_category_list
+Bottle,plastic,draft_if_plastic_bottle_only_else_ignore
+Bottle cap,plastic,draft_if_plastic_cap_else_metal_or_ignore
+Broken glass,glass,draft
+Can,metal,draft
+Cardboard,cardboard,draft
+Carton,cardboard,draft_if_paperboard_carton_else_ignore
+Cup,plastic,draft_if_plastic_cup_else_paper_or_ignore
+Glass jar,glass,draft
+Lid,ignore,ambiguous_material
+Other plastic,plastic,draft
+Paper,paper,draft
+Paper bag,paper,draft
+Plastic bag & wrapper,plastic,draft
+Plastic container,plastic,draft
+Plastic utensils,plastic,draft
+Pop tab,metal,draft
+Straw,plastic,draft
+Unlabeled litter,trash,draft_if_non_recyclable_else_ignore
+Food waste,ignore,outside_trashnet6_material_scope
+Battery,ignore,hazardous_outside_trashnet6
