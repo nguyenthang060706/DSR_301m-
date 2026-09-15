@@ -1,22 +1,61 @@
-taco_category,trashnet6_class,decision_notes
-Aluminium foil,metal,draft_review_with_taco_category_list
-Bottle,plastic,draft_if_plastic_bottle_only_else_ignore
-Bottle cap,plastic,draft_if_plastic_cap_else_metal_or_ignore
-Broken glass,glass,draft
-Can,metal,draft
-Cardboard,cardboard,draft
-Carton,cardboard,draft_if_paperboard_carton_else_ignore
-Cup,plastic,draft_if_plastic_cup_else_paper_or_ignore
-Glass jar,glass,draft
-Lid,ignore,ambiguous_material
-Other plastic,plastic,draft
-Paper,paper,draft
-Paper bag,paper,draft
-Plastic bag & wrapper,plastic,draft
-Plastic container,plastic,draft
-Plastic utensils,plastic,draft
-Pop tab,metal,draft
-Straw,plastic,draft
-Unlabeled litter,trash,draft_if_non_recyclable_else_ignore
-Food waste,ignore,outside_trashnet6_material_scope
-Battery,ignore,hazardous_outside_trashnet6
+taco_category,taco_supercategory,trashnet6_class,decision_rule,decision_notes
+Aluminium foil,Aluminium foil,metal,single_bulk_material,pure aluminium
+Aluminium blister pack,Blister pack,ignore,structural_composite,aluminium tray + plastic cover — two structural components
+Carded blister pack,Blister pack,ignore,structural_composite,cardboard backing + plastic blister — two structural components
+Clear plastic bottle,Bottle,plastic,single_bulk_material,PET plastic
+Glass bottle,Bottle,glass,single_bulk_material,glass
+Other plastic bottle,Bottle,plastic,single_bulk_material,HDPE or other plastic
+Metal bottle cap,Bottle cap,metal,single_bulk_material,metal (steel or aluminium)
+Plastic bottle cap,Bottle cap,plastic,single_bulk_material,plastic (PP or PE)
+Broken glass,Broken glass,glass,single_bulk_material,glass
+Aerosol,Can,metal,single_bulk_material,metal can (steel or aluminium)
+Drink can,Can,metal,single_bulk_material,aluminium or steel
+Food Can,Can,metal,single_bulk_material,steel or tinplate
+Corrugated carton,Carton,cardboard,single_bulk_material,corrugated cardboard
+Drink carton,Carton,ignore,structural_composite,Tetrapak: paperboard + aluminium foil + PE — multi-layer structural barrier
+Egg carton,Carton,cardboard,single_bulk_material,molded paper pulp
+Meal carton,Carton,cardboard,single_bulk_material,paperboard
+Other carton,Carton,cardboard,single_bulk_material,paperboard or corrugated
+Pizza box,Carton,cardboard,single_bulk_material,corrugated cardboard
+Toilet tube,Carton,cardboard,single_bulk_material,cardboard tube
+Cigarette,Cigarette,trash,pragmatic_single_category_override,composite (paper+cellulose acetate filter+tobacco) but 667 instances (13.9% of TACO) — too large to discard silently. No single TrashNet-6 material class fits; mapped to trash as non-recyclable general waste. See decision log in taco_mapping_analysis.md.
+Disposable plastic cup,Cup,plastic,single_bulk_material,plastic (PS or PET)
+Foam cup,Cup,plastic,single_bulk_material,expanded polystyrene (EPS) = plastic
+Glass cup,Cup,glass,single_bulk_material,glass
+Other plastic cup,Cup,plastic,single_bulk_material,plastic
+Paper cup,Cup,paper,bulk_material_thin_coating,bulk paper with thin PE interior lining — coating does not serve independent structural role
+Food waste,Food waste,ignore,outside_scope,biological — outside TrashNet-6 material scope
+Glass jar,Glass jar,glass,single_bulk_material,glass
+Metal lid,Lid,metal,single_bulk_material,metal (steel or aluminium)
+Plastic lid,Lid,plastic,single_bulk_material,plastic
+Magazine paper,Paper,paper,single_bulk_material,paper (coated but single material class)
+Normal paper,Paper,paper,single_bulk_material,paper
+Tissues,Paper,paper,single_bulk_material,paper
+Wrapping paper,Paper,paper,single_bulk_material,paper
+Paper bag,Paper bag,paper,single_bulk_material,paper
+Plastified paper bag,Paper bag,paper,bulk_material_thin_coating,bulk paper with thin plastic surface coating — coating does not serve independent structural role
+Crisp packet,Plastic bag & wrapper,plastic,bulk_material_thin_coating,plastic film with vapor-deposited metallized layer — metallic layer does not serve independent structural role (gas barrier function integrated into film)
+Garbage bag,Plastic bag & wrapper,plastic,single_bulk_material,plastic (PE)
+Other plastic wrapper,Plastic bag & wrapper,plastic,single_bulk_material,plastic
+Plastic film,Plastic bag & wrapper,plastic,single_bulk_material,plastic
+Polypropylene bag,Plastic bag & wrapper,plastic,single_bulk_material,polypropylene
+Single-use carrier bag,Plastic bag & wrapper,plastic,single_bulk_material,plastic (PE)
+Six pack rings,Plastic bag & wrapper,plastic,single_bulk_material,plastic
+Disposable food container,Plastic container,plastic,single_bulk_material,plastic
+Foam food container,Plastic container,plastic,single_bulk_material,expanded polystyrene (EPS) = plastic
+Other plastic container,Plastic container,plastic,single_bulk_material,plastic
+Spread tub,Plastic container,plastic,single_bulk_material,plastic (PP)
+Tupperware,Plastic container,plastic,single_bulk_material,plastic
+Plastic glooves,Plastic glooves,plastic,single_bulk_material,plastic (latex/nitrile/PE)
+Plastic utensils,Plastic utensils,plastic,single_bulk_material,plastic
+Pop tab,Pop tab,metal,single_bulk_material,aluminium
+Rope & strings,Rope & strings,ignore,material_ambiguous,could be nylon (plastic) or hemp/cotton (organic) — material not determinable from category name
+Scrap metal,Scrap metal,metal,single_bulk_material,metal
+Shoe,Shoe,ignore,structural_composite,leather + rubber + fabric + plastic — multi-material composite
+Squeezable tube,Squeezable tube,plastic,bulk_material_thin_coating,laminate tube — aluminium barrier layer integrated into plastic body similar to crisp packet metallization. Reclassified to plastic for consistency with Crisp packet treatment. Impact: 7 instances.
+Paper straw,Straw,paper,single_bulk_material,paper
+Plastic straw,Straw,plastic,single_bulk_material,plastic
+Styrofoam piece,Styrofoam piece,plastic,single_bulk_material,expanded polystyrene (EPS) = plastic
+Unlabeled litter,Unlabeled litter,trash,catch_all,non-categorizable — maps to TrashNet trash class
+Battery,Battery,ignore,outside_scope,hazardous waste — outside TrashNet-6 scope
+Other plastic,Other plastic,plastic,single_bulk_material,plastic

@@ -3,10 +3,49 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+try:
+    from torch.utils.data import Dataset
+except ImportError:
+    Dataset = object
+
 
 def read_split_csv(path: Path) -> list[dict[str, str]]:
     with path.open("r", newline="", encoding="utf-8") as f:
         return list(csv.DictReader(f))
+
+
+def compute_class_weights(config: dict) -> list[float]:
+    """Inverse-frequency class weights computed from the actual train split
+    (trashnet_cv_folds.csv), aligned 1:1 with config["classes"] order.
+
+    weight_c = N / (K * count_c)  ?" same convention as sklearn's
+    class_weight="balanced". Computed from the real split file (not a
+    hard-coded/estimated distribution) so it stays correct if the split,
+    dedup, or holdout ratio ever changes.
+    """
+    classes = list(config["classes"])
+    split_dir = Path(config["data"]["split_dir"])
+    train_rows = read_split_csv(split_dir / "trashnet_cv_folds.csv")
+
+    counts = {name: 0 for name in classes}
+    for row in train_rows:
+        counts[row["class"]] += 1
+
+    total = sum(counts.values())
+    num_classes = len(classes)
+    if total == 0:
+        return [1.0 for _ in classes]
+
+    weights: list[float] = []
+    for name in classes:
+        count = counts[name]
+        if count == 0:
+            raise ValueError(
+                f"Class '{name}' has 0 examples in the train split ({split_dir / 'trashnet_cv_folds.csv'}); "
+                "cannot compute a finite inverse-frequency weight for it."
+            )
+        weights.append(total / (num_classes * count))
+    return weights
 
 
 def create_transforms(image_size: int, train: bool):
@@ -41,7 +80,7 @@ def create_transforms(image_size: int, train: bool):
     )
 
 
-class CsvImageDataset:
+class CsvImageDataset(Dataset):
     def __init__(
         self,
         data_root: Path,
@@ -49,32 +88,29 @@ class CsvImageDataset:
         classes: list[str],
         transform,
     ) -> None:
-        try:
-            from PIL import Image
-            from torch.utils.data import Dataset
-        except ImportError as exc:
-            raise RuntimeError("Pillow and torch are required for image datasets.") from exc
-
-        class _Dataset(Dataset):
-            def __init__(self, outer: CsvImageDataset) -> None:
-                self.outer = outer
-
-            def __len__(self) -> int:
-                return len(self.outer.rows)
-
-            def __getitem__(self, index: int):
-                row = self.outer.rows[index]
-                image_path = self.outer.data_root / row["path"]
-                image = Image.open(image_path).convert("RGB")
-                label = self.outer.class_to_index[row["class"]]
-                return self.outer.transform(image), label
+        if Dataset is object:
+            raise RuntimeError("torch is required for image datasets.")
 
         self.data_root = data_root
         self.rows = rows
         self.classes = classes
         self.class_to_index = {name: index for index, name in enumerate(classes)}
         self.transform = transform
-        self.dataset = _Dataset(self)
+
+    def __len__(self) -> int:
+        return len(self.rows)
+
+    def __getitem__(self, index: int):
+        try:
+            from PIL import Image
+        except ImportError as exc:
+            raise RuntimeError("Pillow is required for image datasets.") from exc
+
+        row = self.rows[index]
+        image_path = self.data_root / row["path"]
+        image = Image.open(image_path).convert("RGB")
+        label = self.class_to_index[row["class"]]
+        return self.transform(image), label
 
 
 def make_week1_loaders(config: dict, batch_size: int):
@@ -97,13 +133,13 @@ def make_week1_loaders(config: dict, batch_size: int):
         rows=train_rows,
         classes=classes,
         transform=create_transforms(image_size=image_size, train=True),
-    ).dataset
+    )
     val_dataset = CsvImageDataset(
         data_root=data_root,
         rows=val_rows,
         classes=classes,
         transform=create_transforms(image_size=image_size, train=False),
-    ).dataset
+    )
 
     train_loader = DataLoader(
         train_dataset,

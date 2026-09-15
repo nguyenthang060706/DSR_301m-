@@ -1,6 +1,6 @@
 # Week 1 Protocol Lock
 
-Status: draft scaffold created on 2026-09-13. Final epoch budget, batch size, and LR schedule must be locked after the teacher/student convergence curves are available.
+Status: data split completed on 2026-09-13. Final epoch budget, batch size, and LR schedule must be locked after the teacher/student convergence curves are available.
 
 ## Required Outputs
 
@@ -19,6 +19,23 @@ Use a single fixed stratified split:
 - 85% TrashNet -> 5-fold CV pool.
 
 The holdout split is never used in any fold training set. It is used for hyperparameter tuning and as the clean image source for TrashNet-C. Consistency weight `delta` must not be selected using severity-3 corruption scores.
+
+Generated split files:
+
+- `data/splits/trashnet_dev_corruption_holdout.csv`: 379 images.
+- `data/splits/trashnet_cv_folds.csv`: 2148 images.
+
+Observed TrashNet class counts:
+
+| class | images |
+| --- | ---: |
+| cardboard | 403 |
+| glass | 501 |
+| metal | 410 |
+| paper | 594 |
+| plastic | 482 |
+| trash | 137 |
+| total | 2527 |
 
 ## Internal Protocol Draft
 

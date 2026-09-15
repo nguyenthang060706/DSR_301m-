@@ -5,7 +5,7 @@ import csv
 import json
 from pathlib import Path
 
-from dsr.data import make_week1_loaders
+from dsr.data import compute_class_weights, make_week1_loaders
 from dsr.metrics import classification_metrics
 from dsr.models import create_model
 
@@ -66,8 +66,9 @@ def evaluate(model, loader, criterion, device, num_classes: int) -> dict[str, fl
     return metrics
 
 
-def write_history(path: Path, rows: list[dict[str, float | int]]) -> None:
+def write_history(path: Path, rows: list[dict[str, float | int]], classes: list[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    per_class_fields = [f"val_f1_{name}" for name in classes] + [f"val_support_{name}" for name in classes]
     with path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
             f,
@@ -78,6 +79,7 @@ def write_history(path: Path, rows: list[dict[str, float | int]]) -> None:
                 "val_accuracy",
                 "val_macro_f1",
                 "val_balanced_accuracy",
+                *per_class_fields,
             ],
         )
         writer.writeheader()
@@ -119,6 +121,7 @@ def main() -> None:
     epochs = args.epochs or int(protocol["max_epochs_candidate"])
     lr = args.lr or float(protocol["lr_schedule_candidate"]["base_lr"])
 
+    classes = list(config["classes"])
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     train_loader, val_loader = make_week1_loaders(config, batch_size=batch_size)
     model = create_model(
@@ -127,7 +130,12 @@ def main() -> None:
         pretrained=not args.no_pretrained,
     ).to(device)
 
-    criterion = nn.CrossEntropyLoss()
+    class_weights = compute_class_weights(config)
+    print("Class weights (inverse-frequency, computed from trashnet_cv_folds.csv):")
+    for name, weight in zip(classes, class_weights):
+        print(f"  {name:>10s}: {weight:.4f}")
+    weight_tensor = torch.tensor(class_weights, dtype=torch.float32, device=device)
+    criterion = nn.CrossEntropyLoss(weight=weight_tensor)
     optimizer = torch.optim.SGD(
         model.parameters(),
         lr=lr,
@@ -159,8 +167,12 @@ def main() -> None:
             "val_macro_f1": val_metrics["macro_f1"],
             "val_balanced_accuracy": val_metrics["balanced_accuracy"],
         }
+        for name, f1 in zip(classes, val_metrics["per_class_f1"]):
+            row[f"val_f1_{name}"] = f1
+        for name, support in zip(classes, val_metrics["per_class_support"]):
+            row[f"val_support_{name}"] = support
         history.append(row)
-        write_history(Path("reports") / "week1" / f"{args.run_name}_history.csv", history)
+        write_history(Path("reports") / "week1" / f"{args.run_name}_history.csv", history, classes=classes)
 
         if val_metrics["macro_f1"] > best_macro_f1:
             best_macro_f1 = val_metrics["macro_f1"]
@@ -172,14 +184,22 @@ def main() -> None:
                     "state_dict": model.state_dict(),
                     "metrics": val_metrics,
                     "config": config,
+                    "class_weights": dict(zip(classes, class_weights)),
                 },
                 checkpoint_dir / "best.pt",
             )
 
+        minority_class = classes[class_weights.index(max(class_weights))]
         print(
             "epoch={epoch} train_loss={train_loss:.4f} "
             "val_loss={val_loss:.4f} val_acc={val_accuracy:.4f} "
-            "val_macro_f1={val_macro_f1:.4f}".format(**row)
+            "val_macro_f1={val_macro_f1:.4f} "
+            "val_f1[{minority_class}]={minority_f1:.4f} (n={minority_n})".format(
+                minority_class=minority_class,
+                minority_f1=row[f"val_f1_{minority_class}"],
+                minority_n=row[f"val_support_{minority_class}"],
+                **row,
+            )
         )
 
     torch.save(model.state_dict(), checkpoint_dir / "last_state_dict.pt")
