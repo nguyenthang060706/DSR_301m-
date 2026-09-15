@@ -23,7 +23,7 @@
     "momentum": 0.9,
     "weight_decay": 0.0001,
     "batch_size": 32,
-    "max_epochs": 80,
+    "max_epochs": 100,
     "loss_function": "weighted_cross_entropy_inverse_frequency",
     "early_stopping": {
       "enabled": false,
