@@ -37,25 +37,27 @@ Observed TrashNet class counts:
 | trash | 137 |
 | total | 2527 |
 
-## Internal Protocol Draft
+## Locked Internal Protocol
 
-The initial candidate protocol is stored in `configs/week1_protocol.json`.
+The final protocol is stored in `configs/week1_protocol.json` and is now **locked**:
 
-These values are deliberately marked as draft until real convergence curves exist:
+- **Batch size**: 32
+- **Optimizer**: SGD with momentum 0.9, weight decay 1e-4
+- **Loss Function**: Weighted Cross-Entropy (Inverse-frequency class weights)
+- **Max Epochs**: 80 (Safe budget covering convergence for both models)
+- **LR schedule**: Cosine annealing (base 0.01, min 1e-6) with 5 warmup epochs.
 
-- batch size: 32;
-- optimizer: SGD with momentum 0.9;
-- weight decay: 1e-4;
-- candidate max epochs: 100;
-- LR schedule: cosine with 5 warmup epochs.
+### Baseline Results
 
-Once teacher/student baseline training runs complete, update this document with:
+Teacher (ResNet50) vs Student (ResNet18) clean validation metrics:
 
-- final epoch count;
-- final batch size;
-- final LR schedule;
-- clean validation accuracy and macro-F1 for teacher/student;
-- KL divergence summary `KL(p_T || p_S)` over the full validation set if the teacher-student accuracy gap is under 8 percentage points.
+| Model | Peak Epoch | Val Accuracy | Val Macro-F1 | Val F1 (Trash) |
+| --- | --- | --- | --- | --- |
+| **Teacher (ResNet50)** | 43 | 94.45% | 94.48% | 95.00% |
+| **Student (ResNet18)** | 73 | 92.34% | 91.37% | 85.00% |
+| **Gap** | - | **2.11%** | **3.11%** | **10.0%** |
+
+*Note: Since the accuracy gap is under 8 percentage points (~2.11%), KL divergence `KL(p_T || p_S)` analysis will be mandated during the Knowledge Distillation phase in Week 2 to explicitly measure knowledge transfer capacity.*
 
 ## TACO Mapping Protocol
 

@@ -17,18 +17,19 @@
     "image_size": 224,
     "num_workers": 4
   },
-  "training_protocol_status": "draft_until_teacher_student_convergence_curves_exist",
+  "training_protocol_status": "locked",
   "internal_ablation_protocol": {
     "optimizer": "sgd",
     "momentum": 0.9,
     "weight_decay": 0.0001,
     "batch_size": 32,
-    "max_epochs_candidate": 100,
+    "max_epochs": 80,
+    "loss_function": "weighted_cross_entropy_inverse_frequency",
     "early_stopping": {
       "enabled": false,
       "reason": "Protocol lock requires identical epoch budgets across internal ablations."
     },
-    "lr_schedule_candidate": {
+    "lr_schedule": {
       "type": "cosine",
       "base_lr": 0.01,
       "min_lr": 0.000001,
