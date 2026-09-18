@@ -15,6 +15,9 @@ MODEL_REGISTRY: dict[str, ModelSpec] = {
     "resnet50": ModelSpec("resnet50", "teacher", notes="Week-1 teacher baseline."),
     "resnet18": ModelSpec("resnet18", "student", notes="Week-1 student-only baseline."),
     "resnet18_eca": ModelSpec("resnet18_eca", "student", has_eca=True),
+    "mobilenet_v3_large": ModelSpec("mobilenet_v3_large", "baseline", notes="Week-2 baseline CNN."),
+    "mobilenet_v3_small": ModelSpec("mobilenet_v3_small", "baseline", notes="Week-2 baseline CNN."),
+    "efficientnet_b0": ModelSpec("efficientnet_b0", "baseline", notes="Week-2 baseline CNN."),
 }
 
 
@@ -37,12 +40,30 @@ def create_model(name: str, num_classes: int, pretrained: bool = True):
         weights = models.ResNet18_Weights.DEFAULT if pretrained else None
         model = models.resnet18(weights=weights)
         model = add_stage_eca(model)
+    elif name == "mobilenet_v3_large":
+        weights = models.MobileNet_V3_Large_Weights.DEFAULT if pretrained else None
+        model = models.mobilenet_v3_large(weights=weights)
+    elif name == "mobilenet_v3_small":
+        weights = models.MobileNet_V3_Small_Weights.DEFAULT if pretrained else None
+        model = models.mobilenet_v3_small(weights=weights)
+    elif name == "efficientnet_b0":
+        weights = models.EfficientNet_B0_Weights.DEFAULT if pretrained else None
+        model = models.efficientnet_b0(weights=weights)
     else:
         known = ", ".join(sorted(MODEL_REGISTRY))
         raise ValueError(f"Unknown model '{name}'. Known models: {known}")
 
-    in_features = model.fc.in_features
-    model.fc = nn.Linear(in_features, num_classes)
+    if hasattr(model, 'fc'):
+        in_features = model.fc.in_features
+        model.fc = nn.Linear(in_features, num_classes)
+    elif hasattr(model, 'classifier'):
+        if name.startswith("mobilenet_v3"):
+            in_features = model.classifier[3].in_features
+            model.classifier[3] = nn.Linear(in_features, num_classes)
+        elif name.startswith("efficientnet"):
+            in_features = model.classifier[1].in_features
+            model.classifier[1] = nn.Linear(in_features, num_classes)
+        
     return model
 
 

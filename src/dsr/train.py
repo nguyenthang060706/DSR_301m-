@@ -89,8 +89,13 @@ def write_history(path: Path, rows: list[dict[str, float | int]], classes: list[
 def main() -> None:
     parser = argparse.ArgumentParser(description="Week-1 baseline training entrypoint.")
     parser.add_argument("--config", required=True, type=Path)
-    parser.add_argument("--model", required=True, choices=["resnet50", "resnet18", "resnet18_eca"])
+    parser.add_argument(
+        "--model", 
+        required=True, 
+        choices=["resnet50", "resnet18", "resnet18_eca", "mobilenet_v3_large", "mobilenet_v3_small", "efficientnet_b0"]
+    )
     parser.add_argument("--run-name", required=True)
+    parser.add_argument("--out-dir", type=Path, default=Path("reports/week1"), help="Output directory for history CSV")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--epochs", type=int)
     parser.add_argument("--batch-size", type=int)
@@ -118,8 +123,8 @@ def main() -> None:
 
     protocol = config["internal_ablation_protocol"]
     batch_size = args.batch_size or int(protocol["batch_size"])
-    epochs = args.epochs or int(protocol["max_epochs_candidate"])
-    lr = args.lr or float(protocol["lr_schedule_candidate"]["base_lr"])
+    epochs = args.epochs or int(protocol["max_epochs"])
+    lr = args.lr or float(protocol["lr_schedule"]["base_lr"])
 
     classes = list(config["classes"])
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -142,10 +147,17 @@ def main() -> None:
         momentum=float(protocol["momentum"]),
         weight_decay=float(protocol["weight_decay"]),
     )
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+    warmup_epochs = int(protocol["lr_schedule"].get("warmup_epochs", 5))
+    warmup_scheduler = torch.optim.lr_scheduler.LinearLR(
+        optimizer, start_factor=0.01, end_factor=1.0, total_iters=warmup_epochs
+    )
+    cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer,
-        T_max=epochs,
-        eta_min=float(protocol["lr_schedule_candidate"]["min_lr"]),
+        T_max=epochs - warmup_epochs,
+        eta_min=float(protocol["lr_schedule"]["min_lr"]),
+    )
+    scheduler = torch.optim.lr_scheduler.SequentialLR(
+        optimizer, schedulers=[warmup_scheduler, cosine_scheduler], milestones=[warmup_epochs]
     )
 
     history: list[dict[str, float | int]] = []
@@ -172,7 +184,9 @@ def main() -> None:
         for name, support in zip(classes, val_metrics["per_class_support"]):
             row[f"val_support_{name}"] = support
         history.append(row)
-        write_history(Path("reports") / "week1" / f"{args.run_name}_history.csv", history, classes=classes)
+        out_dir = args.out_dir
+        out_dir.mkdir(parents=True, exist_ok=True)
+        write_history(out_dir / f"{args.run_name}_history.csv", history, classes=classes)
 
         if val_metrics["macro_f1"] > best_macro_f1:
             best_macro_f1 = val_metrics["macro_f1"]
