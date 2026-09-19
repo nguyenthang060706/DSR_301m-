@@ -25,7 +25,9 @@ def compute_class_weights(config: dict) -> list[float]:
     """
     classes = list(config["classes"])
     split_dir = Path(config["data"]["split_dir"])
-    train_rows = read_split_csv(split_dir / "trashnet_cv_folds.csv")
+    all_cv_rows = read_split_csv(split_dir / "trashnet_cv_folds.csv")
+    val_fold = str(config.get("data", {}).get("val_fold", 0))
+    train_rows = [r for r in all_cv_rows if str(r.get("fold", "")) != val_fold]
 
     counts = {name: 0 for name in classes}
     for row in train_rows:
@@ -125,8 +127,14 @@ def make_week1_loaders(config: dict, batch_size: int):
     image_size = int(config["data"]["image_size"])
     num_workers = int(config["data"].get("num_workers", 0))
 
-    train_rows = read_split_csv(split_dir / "trashnet_cv_folds.csv")
-    val_rows = read_split_csv(split_dir / "trashnet_dev_corruption_holdout.csv")
+    all_cv_rows = read_split_csv(split_dir / "trashnet_cv_folds.csv")
+    
+    # Lấy val_fold từ config (mặc định là 0 cho các thí nghiệm exploratory Tuần 1-7)
+    val_fold = str(config.get("data", {}).get("val_fold", 0))
+    
+    # MASTER PLAN §6.4 FIX: Tuyệt đối KHÔNG dùng dev_corruption_holdout làm val set hàng ngày.
+    train_rows = [r for r in all_cv_rows if str(r.get("fold", "")) != val_fold]
+    val_rows = [r for r in all_cv_rows if str(r.get("fold", "")) == val_fold]
 
     train_dataset = CsvImageDataset(
         data_root=data_root,

@@ -52,8 +52,9 @@ def train_kd_one_epoch(student, teacher, loader, criterion_ce, optimizer, device
         # reduction='batchmean' is required for KL divergence to be mathematically correct over a batch
         loss_kd = F.kl_div(student_log_prob, teacher_prob, reduction="batchmean") * (temperature ** 2)
         
-        # 3. Total Loss
-        loss = (1.0 - alpha) * loss_ce + alpha * loss_kd
+        # 3. Total Loss (Cố định cứng theo chuẩn Additive của Master Plan §5)
+        # MASTER: L_total = L_CE + alpha*L_logit + ... -> Không scale L_CE để tránh rủi ro gradient khi so sánh chéo dòng 4a-8.
+        loss = loss_ce + alpha * loss_kd
         
         loss.backward()
         optimizer.step()
