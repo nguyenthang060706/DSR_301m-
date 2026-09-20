@@ -31,4 +31,5 @@ esnet18_eca và feed-forward một batch ảnh.
 ### Ngày 6-7: Tổng hợp & Phân tích
 - Thu thập kết quả vào 
 eports/week3/week3_summary.md.
-- Đối chiếu điểm F1 của Dòng 4c với Vanilla KD (Dòng 3 - 92.43%). Báo cáo mức độ vượt trội.
+- Đối chiếu điểm F1 của Dòng 4c với Student tự học (Dòng 1 - Macro-F1 95.04%) và Vanilla KD (Dòng 3 - Macro-F1 92.43%). Báo cáo mức độ vượt trội.
+- Lưu ý: Vanilla KD 92.43% là kết quả pilot/sơ bộ. Lần chạy chính thức Dòng 3 sẽ diễn ra trong Tuần 3 với cùng protocol.

@@ -272,7 +272,11 @@ def main() -> None:
             )
         )
 
-    torch.save(student.state_dict(), checkpoint_dir / "last_state_dict.pt")
+    torch.save({
+        "model": student.state_dict(),
+        "optimizer": optimizer.state_dict(),
+        "scheduler": scheduler.state_dict(),
+    }, checkpoint_dir / "last_state_dict.pt")
 
 
 if __name__ == "__main__":

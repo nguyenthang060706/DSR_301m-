@@ -101,6 +101,7 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int)
     parser.add_argument("--lr", type=float)
     parser.add_argument("--no-pretrained", action="store_true")
+    parser.add_argument("--resume", action="store_true", help="Resume from last checkpoint and history")
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -162,11 +163,41 @@ def main() -> None:
 
     history: list[dict[str, float | int]] = []
     best_macro_f1 = -1.0
+    start_epoch = 1
     checkpoint_dir = Path("checkpoints") / args.run_name
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"Training {args.model} on {device} for {epochs} epochs.")
-    for epoch in range(1, epochs + 1):
+    # Resume logic
+    out_dir = args.out_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+    history_file = out_dir / f"{args.run_name}_history.csv"
+
+    if args.resume and history_file.exists():
+        print(f"Resuming from existing history: {history_file}")
+        with history_file.open("r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                parsed_row = {}
+                for k, v in row.items():
+                    if k == "epoch":
+                        parsed_row[k] = int(v)
+                    else:
+                        parsed_row[k] = float(v)
+                history.append(parsed_row)
+        if history:
+            start_epoch = history[-1]["epoch"] + 1
+            best_macro_f1 = max(r["val_macro_f1"] for r in history)
+
+        last_ckpt = checkpoint_dir / "last_state_dict.pt"
+        if last_ckpt.exists():
+            print(f"Loading last checkpoint from {last_ckpt}")
+            ckpt = torch.load(last_ckpt, map_location=device)
+            model.load_state_dict(ckpt["model"])
+            optimizer.load_state_dict(ckpt["optimizer"])
+            scheduler.load_state_dict(ckpt["scheduler"])
+
+    print(f"Training {args.model} on {device} for {epochs} epochs (starting at epoch {start_epoch}).")
+    for epoch in range(start_epoch, epochs + 1):
         train_loss = train_one_epoch(model, train_loader, criterion, optimizer, device)
         val_metrics = evaluate(model, val_loader, criterion, device, num_classes=num_classes)
         scheduler.step()
@@ -184,8 +215,6 @@ def main() -> None:
         for name, support in zip(classes, val_metrics["per_class_support"]):
             row[f"val_support_{name}"] = support
         history.append(row)
-        out_dir = args.out_dir
-        out_dir.mkdir(parents=True, exist_ok=True)
         write_history(out_dir / f"{args.run_name}_history.csv", history, classes=classes)
 
         if val_metrics["macro_f1"] > best_macro_f1:
@@ -216,7 +245,11 @@ def main() -> None:
             )
         )
 
-    torch.save(model.state_dict(), checkpoint_dir / "last_state_dict.pt")
+    torch.save({
+        "model": model.state_dict(),
+        "optimizer": optimizer.state_dict(),
+        "scheduler": scheduler.state_dict(),
+    }, checkpoint_dir / "last_state_dict.pt")
 
 
 if __name__ == "__main__":
