@@ -219,11 +219,7 @@ def main() -> None:
         last_ckpt = checkpoint_dir / "last_state_dict.pt"
         if last_ckpt.exists():
             print(f"Loading last state dict from {last_ckpt}")
-            student.load_state_dict(torch.load(last_ckpt, map_location=device))
-            
-        # Fast-forward scheduler
-        for _ in range(start_epoch - 1):
-            scheduler.step()
+            ckpt = torch.load(last_ckpt, map_location=device); student.load_state_dict(ckpt["model"]); optimizer.load_state_dict(ckpt["optimizer"]); scheduler.load_state_dict(ckpt["scheduler"])
 
     print(f"Training Vanilla KD on {device}. Alpha={args.alpha}, T={args.temperature}")
     for epoch in range(start_epoch, epochs + 1):
@@ -281,3 +277,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -92,7 +92,7 @@ def main() -> None:
     parser.add_argument(
         "--model", 
         required=True, 
-        choices=["resnet50", "resnet18", "resnet18_eca", "mobilenet_v3_large", "mobilenet_v3_small", "efficientnet_b0"]
+        choices=["resnet50", "resnet18", "resnet18_eca", "mobilenet_v3_large", "mobilenet_v3_small", "efficientnet_b0", "efficientformer_l1"]
     )
     parser.add_argument("--run-name", required=True)
     parser.add_argument("--out-dir", type=Path, default=Path("reports/week1"), help="Output directory for history CSV")
@@ -221,3 +221,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+

@@ -18,6 +18,7 @@ MODEL_REGISTRY: dict[str, ModelSpec] = {
     "mobilenet_v3_large": ModelSpec("mobilenet_v3_large", "baseline", notes="Week-2 baseline CNN."),
     "mobilenet_v3_small": ModelSpec("mobilenet_v3_small", "baseline", notes="Week-2 baseline CNN."),
     "efficientnet_b0": ModelSpec("efficientnet_b0", "baseline", notes="Week-2 baseline CNN."),
+    "efficientformer_l1": ModelSpec("efficientformer_l1", "baseline", notes="Week-2 baseline CNN with Attention."),
 }
 
 
@@ -49,6 +50,10 @@ def create_model(name: str, num_classes: int, pretrained: bool = True):
     elif name == "efficientnet_b0":
         weights = models.EfficientNet_B0_Weights.DEFAULT if pretrained else None
         model = models.efficientnet_b0(weights=weights)
+    elif name == "efficientformer_l1":
+        import timm
+        model = timm.create_model("efficientformer_l1", pretrained=pretrained, num_classes=num_classes)
+        return model # timm handles num_classes internally
     else:
         known = ", ".join(sorted(MODEL_REGISTRY))
         raise ValueError(f"Unknown model '{name}'. Known models: {known}")

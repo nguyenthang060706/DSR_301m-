@@ -23,14 +23,14 @@ def main():
     _, val_loader = make_week1_loaders(config, batch_size=32)
     
     # Load Teacher
-    teacher_ckpt = torch.load("checkpoints/teacher_resnet50_week1/best.pt", map_location=device)
+    teacher_ckpt = torch.load("checkpoints/teacher_resnet50_clean/best.pt", map_location=device)
     teacher = create_model("resnet50", num_classes, pretrained=False)
     teacher.load_state_dict(teacher_ckpt["state_dict"])
     teacher.to(device)
     teacher.eval()
     
     # Load Student
-    student_ckpt = torch.load("checkpoints/student_resnet18_week1/best.pt", map_location=device)
+    student_ckpt = torch.load("checkpoints/student_resnet18_clean/best.pt", map_location=device)
     student = create_model("resnet18", num_classes, pretrained=False)
     student.load_state_dict(student_ckpt["state_dict"])
     student.to(device)
@@ -65,3 +65,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
