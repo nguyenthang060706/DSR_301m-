@@ -115,7 +115,12 @@ class CsvImageDataset(Dataset):
         return self.transform(image), label
 
 
-def make_week1_loaders(config: dict, batch_size: int):
+def make_week1_loaders(
+    config: dict,
+    batch_size: int,
+    generator=None,
+    worker_init_fn=None,
+):
     try:
         from torch.utils.data import DataLoader
     except ImportError as exc:
@@ -149,12 +154,19 @@ def make_week1_loaders(config: dict, batch_size: int):
         transform=create_transforms(image_size=image_size, train=False),
     )
 
+    loader_kwargs = {}
+    if generator is not None:
+        loader_kwargs["generator"] = generator
+    if worker_init_fn is not None:
+        loader_kwargs["worker_init_fn"] = worker_init_fn
+
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size,
         shuffle=True,
         num_workers=num_workers,
         pin_memory=True,
+        **loader_kwargs,
     )
     val_loader = DataLoader(
         val_dataset,

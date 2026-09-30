@@ -24,3 +24,9 @@ def test_macro_f1_hides_minority_failure():
     # The per-class breakdown catches what macro misses
     assert metrics["per_class_f1"][2] == 0.0
     assert metrics["per_class_support"][2] == 2
+    print("test_macro_f1_hides_minority_failure PASS")
+
+
+if __name__ == "__main__":
+    test_macro_f1_hides_minority_failure()
+

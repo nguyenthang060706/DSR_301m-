@@ -1,6 +1,8 @@
-from __future__ import annotations
-
+import sys
 import unittest
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from scripts.make_trashnet_splits import assign_stratified_folds, stratified_holdout
 

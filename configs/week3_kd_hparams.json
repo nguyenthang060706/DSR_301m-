@@ -1,0 +1,32 @@
+{
+  "project": "robustness_aware_attention_distillation_waste",
+  "week": 3,
+  "status": "locked",
+  "vanilla_kd": {
+    "alpha": 0.7,
+    "tau": 6.0,
+    "seed": 42,
+    "official_run_name": "w3_vkd_tau6_s42",
+    "checkpoint_path": "checkpoints/w3_vkd_tau6_s42/best.pt",
+    "selection_criteria": "Max Macro-F1 on Dev/Corruption-Holdout (88.67%) with delta > noise_margin m=1.0%"
+  },
+  "attention_transfer": {
+    "alpha": 0.7,
+    "tau": 6.0,
+    "gamma_candidates": [0.1, 0.5, 1.0],
+    "provisional_gamma": 0.5
+  },
+  "fitnet": {
+    "alpha": 0.7,
+    "tau": 6.0,
+    "beta_default": 1.0,
+    "stage": 3,
+    "regressor": "Conv2d(256, 1024, kernel_size=1)"
+  },
+  "cutmix_kd": {
+    "alpha": 0.7,
+    "tau": 6.0,
+    "prob": 0.5,
+    "beta_distribution": [1.0, 1.0]
+  }
+}
