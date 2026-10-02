@@ -1,82 +1,51 @@
-# DSR Research Implementation
+# Knowledge Distillation for Lightweight Waste Classification in University Canteen Edge Devices
 
-Implementation workspace for the research plan in `ke_hoach_nghien_cuu_MASTER_v8.md`.
+Nghiên cứu ứng dụng Knowledge Distillation (KD) nhằm tạo ra mô hình gọn nhẹ, chính xác và suy luận nhanh để phân loại rác canteen trường đại học thành 3 nhóm quyết định trên thiết bị biên.
 
-The week-1 goal is to lock the experimental protocol before training:
+Tài liệu kế hoạch nghiên cứu chính thức: **[`ke_hoach_nghien_cuu_MASTER_v9.5.md`](./ke_hoach_nghien_cuu_MASTER_v9.5.md)**.
 
-- prepare TrashNet in the original 6 classes;
-- inspect class imbalance;
-- create a fixed stratified Dev/Corruption-holdout split;
-- reserve the remaining data for identical 5-fold CV indices;
-- freeze the TACO-to-6-class mapping protocol;
-- train the ResNet50 teacher and ResNet18 student baseline once dependencies and data are available;
-- use convergence curves from those runs to finalize the epoch budget, batch size, and LR schedule.
+---
 
-## Expected Data Layout
+## 1. Mục tiêu & 3 nhóm quyết định
+Phân loại rác tại nguồn dựa trên quyết định bỏ rác thực tế:
+1. **Hữu cơ (Organic)**: Rác thực phẩm, đồ ăn thừa, vỏ hoa quả.
+2. **Tái chế khô (Recyclable)**: Chai nhựa sạch, lon nhôm, hộp giấy sạch.
+3. **Còn lại / Khó tái chế (Other/Landfill)**: Hộp xốp bẩn, túi nilon dính dầu, giấy ăn bẩn.
 
-Place TrashNet images under:
+---
+
+## 2. Các câu hỏi nghiên cứu (RQ)
+- **RQ1 (Cơ chế KD & Nhãn)**: So sánh các họ KD (Hinton, DKD, FitNet, Attention Transfer) dưới recipe nền hiện đại; so sánh hiệu quả giữa huấn luyện nhãn mịn ($10\text{--}15$ lớp rồi gộp 3 nhóm) so với huấn luyện trực tiếp 3 nhóm.
+- **RQ2 (Domain Gap & Thích nghi)**: Đánh giá khoảng cách miền từ dữ liệu công khai sang ảnh canteen tự chụp; khảo sát đường cong thích nghi few-shot ($k \in \{0, 10, 25, 50, 100\}$).
+- **Mục tiêu triển khai (Edge Goal)**: Lượng tử hóa INT8 (PTQ) và đo kiểm benchmark (latency, RAM, accuracy) trên phần cứng thiết bị biên thật (Android/Raspberry Pi).
+
+---
+
+## 3. Cấu trúc thư mục
 
 ```text
-data/raw/trashnet/
-  cardboard/
-  glass/
-  metal/
-  paper/
-  plastic/
-  trash/
+DSR_301m-/
+├── ke_hoach_nghien_cuu_MASTER_v9.5.md   # Kế hoạch nghiên cứu chính thức (duy nhất)
+├── requirements.txt                     # Danh mục thư viện phụ thuộc
+├── data/
+│   ├── raw/                             # Ảnh gốc (công khai, canteen, benchmark)
+│   ├── mappings/                        # Bảng ánh xạ nhãn mịn -> 3 nhóm (label_map.csv)
+│   └── splits/                          # Danh sách chia train/dev/test/few-shot
+├── src/dsr/                             # Mã nguồn huấn luyện & KD
+├── configs/                             # File cấu hình thí nghiệm (JSON/YAML)
+├── scripts/                             # Script công cụ phân tích & đo kiểm
+├── reports/                             # Báo cáo kết quả & lịch sử huấn luyện
+└── checkpoints/                         # Trọng số mô hình sau huấn luyện
 ```
 
-The generated split files are written under `data/splits/`.
+---
 
-## Week-1 Commands
-
-This shell does not currently expose `python` on PATH. Use the bundled Codex
-runtime directly:
-
-```powershell
-$PY = "C:\Users\LENOVO\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
-```
-
-Inspect the dataset:
-
-```powershell
-& $PY scripts/inspect_dataset.py --data-root data/raw/trashnet --out reports/week1/class_distribution.csv
-```
-
-Create the fixed holdout and CV folds:
-
-```powershell
-& $PY scripts/make_trashnet_splits.py --data-root data/raw/trashnet --out-dir data/splits --holdout-ratio 0.15 --folds 5 --seed 20260913
-```
-
-Train baselines after installing the ML dependencies:
-
-```powershell
-& $PY src/dsr/train.py --config configs/week1_protocol.json --model resnet50 --run-name teacher_resnet50_week1
-& $PY src/dsr/train.py --config configs/week1_protocol.json --model resnet18 --run-name student_resnet18_week1
-```
-
-## Current Status
-
-TrashNet is available under `data/raw/trashnet` and the fixed week-1 split files
-have been generated under `data/splits`.
-
-Current class counts:
-
-| class | images |
-| --- | ---: |
-| cardboard | 403 |
-| glass | 501 |
-| metal | 410 |
-| paper | 594 |
-| plastic | 482 |
-| trash | 137 |
-| total | 2527 |
-
-Split summary:
-
-- `trashnet_dev_corruption_holdout.csv`: 379 images.
-- `trashnet_cv_folds.csv`: 2148 images over five stratified folds.
-
-The actual week-1 baseline training is pending local availability of
-PyTorch/torchvision.
+## 4. Bắt đầu (Tuần 1-2)
+1. Kích hoạt môi trường ảo:
+   ```powershell
+   .\.venv\Scripts\Activate.ps1
+   pip install -r requirements.txt
+   ```
+2. Thực hiện quy ước gán nhãn `label_guide.md` và gán thử 100 ảnh canteen (Cohen's $\kappa \ge 0,7$).
+3. Thiết lập dataset công khai nhãn mịn và bảng ánh xạ `label_map.csv`.
+4. Chạy pilot recipe và pilot epoch (40 vs 80 epoch) để chốt protocol-lock.

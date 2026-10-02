@@ -11,3 +11,4 @@ reports/
 runs/
 checkpoints/
 artifacts/
+.venv/

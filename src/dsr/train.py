@@ -1,258 +1,253 @@
+"""src/dsr/train.py
+
+Script huấn luyện mô hình chuẩn (M0 Student, Teacher, hoặc Baselines)
+Tuân thủ Kế hoạch MASTER v9.5 (§4.1, §5.0, §5.1):
+  - Optimizer: SGD momentum 0.9, weight decay 1e-4
+  - Scheduler: CosineAnnealingLR (eta_min=1e-5, không warmup)
+  - Augmentation: RandomResizedCrop(224) + TrivialAugmentWide
+  - AMP FP16 + channels_last memory format
+  - Đánh giá trên tập Dev sau mỗi epoch: cả Nhãn mịn 30 lớp và 3 nhóm quyết định Canteen
+"""
+
 from __future__ import annotations
 
 import argparse
 import csv
-import json
+import sys
+import time
 from pathlib import Path
 
-from dsr.data import compute_class_weights, make_week1_loaders
-from dsr.metrics import classification_metrics
+import numpy as np
+import torch
+import torch.nn as nn
+from sklearn.metrics import accuracy_score, f1_score
+from torch.utils.data import DataLoader
+
+from dsr.data import (
+    WasteDataset,
+    create_transforms,
+    load_label_map,
+    read_split_csv,
+)
 from dsr.models import create_model
 
 
-def load_config(path: Path) -> dict:
-    with path.open("r", encoding="utf-8") as f:
-        return json.load(f)
+def parse_args():
+    parser = argparse.ArgumentParser(description="DSR Modern Training Script (V9.5)")
+    parser.add_argument("--model", type=str, required=True, help="Tên kiến trúc (resnet50, resnet18, mobilenet_v3_small, ...)")
+    parser.add_argument("--run-name", type=str, required=True, help="Tên lượt chạy (ví dụ: teacher_resnet50_clean, student_m0_clean)")
+    parser.add_argument("--epochs", type=int, default=40, help="Số epoch huấn luyện (default: 40)")
+    parser.add_argument("--batch-size", type=int, default=32, help="Batch size (default: 32)")
+    parser.add_argument("--lr", type=float, default=0.01, help="Learning rate ban đầu (default: 0.01)")
+    parser.add_argument("--weight-decay", type=float, default=1e-4, help="Weight decay (default: 1e-4)")
+    parser.add_argument("--label-smoothing", type=float, default=0.0, help="Label smoothing (0.0 cho Teacher, 0.1 cho Student M0)")
+    parser.add_argument("--num-workers", type=int, default=4, help="Số worker nạp dữ liệu (default: 4)")
+    parser.add_argument("--seed", type=int, default=20261001, help="Random seed cố định (default: 20261001)")
+    parser.add_argument("--data-root", type=Path, default=Path("data/raw/household_waste_30"))
+    parser.add_argument("--map-file", type=Path, default=Path("data/mappings/label_map.csv"))
+    parser.add_argument("--train-file", type=Path, default=Path("data/splits/public_train.csv"))
+    parser.add_argument("--dev-file", type=Path, default=Path("data/splits/public_dev.csv"))
+    parser.add_argument("--out-dir", type=Path, default=Path("reports"))
+    parser.add_argument("--checkpoint-dir", type=Path, default=Path("checkpoints"))
+    return parser.parse_args()
 
 
-def train_one_epoch(model, loader, criterion, optimizer, device) -> float:
-    model.train()
-    total_loss = 0.0
-    total_examples = 0
+def main():
+    args = parse_args()
 
-    for images, labels in loader:
-        images = images.to(device)
-        labels = labels.to(device)
+    # Khóa seed
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(args.seed)
 
-        optimizer.zero_grad(set_to_none=True)
-        logits = model(images)
-        loss = criterion(logits, labels)
-        loss.backward()
-        optimizer.step()
-
-        batch_size = labels.size(0)
-        total_loss += float(loss.detach().cpu()) * batch_size
-        total_examples += batch_size
-
-    return total_loss / total_examples if total_examples else 0.0
-
-
-def evaluate(model, loader, criterion, device, num_classes: int) -> dict[str, float]:
-    import torch
-
-    model.eval()
-    total_loss = 0.0
-    total_examples = 0
-    y_true: list[int] = []
-    y_pred: list[int] = []
-
-    with torch.no_grad():
-        for images, labels in loader:
-            images = images.to(device)
-            labels = labels.to(device)
-
-            logits = model(images)
-            loss = criterion(logits, labels)
-            preds = logits.argmax(dim=1)
-
-            batch_size = labels.size(0)
-            total_loss += float(loss.detach().cpu()) * batch_size
-            total_examples += batch_size
-            y_true.extend(labels.cpu().tolist())
-            y_pred.extend(preds.cpu().tolist())
-
-    metrics = classification_metrics(y_true, y_pred, num_classes=num_classes)
-    metrics["loss"] = total_loss / total_examples if total_examples else 0.0
-    return metrics
-
-
-def write_history(path: Path, rows: list[dict[str, float | int]], classes: list[str]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    per_class_fields = [f"val_f1_{name}" for name in classes] + [f"val_support_{name}" for name in classes]
-    with path.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(
-            f,
-            fieldnames=[
-                "epoch",
-                "train_loss",
-                "val_loss",
-                "val_accuracy",
-                "val_macro_f1",
-                "val_balanced_accuracy",
-                *per_class_fields,
-            ],
-        )
-        writer.writeheader()
-        writer.writerows(rows)
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Week-1 baseline training entrypoint.")
-    parser.add_argument("--config", required=True, type=Path)
-    parser.add_argument(
-        "--model", 
-        required=True, 
-        choices=["resnet50", "resnet18", "resnet18_eca", "mobilenet_v3_large", "mobilenet_v3_small", "efficientnet_b0", "efficientformer_l1"]
-    )
-    parser.add_argument("--run-name", required=True)
-    parser.add_argument("--out-dir", type=Path, default=Path("reports/week1"), help="Output directory for history CSV")
-    parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--epochs", type=int)
-    parser.add_argument("--batch-size", type=int)
-    parser.add_argument("--lr", type=float)
-    parser.add_argument("--no-pretrained", action="store_true")
-    parser.add_argument("--resume", action="store_true", help="Resume from last checkpoint and history")
-    args = parser.parse_args()
-
-    config = load_config(args.config)
-    num_classes = len(config["classes"])
-
-    if args.dry_run:
-        print(f"run_name={args.run_name}")
-        print(f"model={args.model}")
-        print(f"num_classes={num_classes}")
-        print(f"trashnet_root={config['data']['trashnet_root']}")
-        print(f"split_dir={config['data']['split_dir']}")
-        print(f"protocol_status={config['training_protocol_status']}")
-        return
-
-    try:
-        import torch
-        import torch.nn as nn
-    except ImportError as exc:
-        raise RuntimeError("PyTorch is required for training. Install requirements.txt first.") from exc
-
-    protocol = config["internal_ablation_protocol"]
-    batch_size = args.batch_size or int(protocol["batch_size"])
-    epochs = args.epochs or int(protocol["max_epochs"])
-    lr = args.lr or float(protocol["lr_schedule"]["base_lr"])
-
-    classes = list(config["classes"])
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    train_loader, val_loader = make_week1_loaders(config, batch_size=batch_size)
-    model = create_model(
-        args.model,
-        num_classes=num_classes,
-        pretrained=not args.no_pretrained,
-    ).to(device)
+    print(f"\n=======================================================")
+    print(f"KHỞI ĐỘNG HUẤN LUYỆN: {args.run_name.upper()}")
+    print(f"=======================================================")
+    print(f"Model: {args.model} | Epochs: {args.epochs} | Batch size: {args.batch_size}")
+    print(f"LR: {args.lr} | Label Smoothing: {args.label_smoothing} | Seed: {args.seed}")
+    print(f"Thiết bị: {device} ({torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU'})")
 
-    class_weights = compute_class_weights(config)
-    print("Class weights (inverse-frequency, computed from trashnet_cv_folds.csv):")
-    for name, weight in zip(classes, class_weights):
-        print(f"  {name:>10s}: {weight:.4f}")
-    weight_tensor = torch.tensor(class_weights, dtype=torch.float32, device=device)
-    criterion = nn.CrossEntropyLoss(weight=weight_tensor)
+    # 1. Tải ánh xạ nhãn và dữ liệu
+    fine_name_to_id, fine_to_coarse_id, fine_classes, coarse_classes = load_label_map(args.map_file)
+    train_rows = read_split_csv(args.train_file)
+    dev_rows = read_split_csv(args.dev_file)
+    num_fine_classes = len(fine_classes)
+
+    print(f"Dữ liệu: {len(train_rows):,} Train | {len(dev_rows):,} Dev | {num_fine_classes} Fine Classes")
+
+    train_transform = create_transforms(image_size=224, train=True, use_trivial_augment=True)
+    dev_transform = create_transforms(image_size=224, train=False)
+
+    train_ds = WasteDataset(args.data_root, train_rows, fine_name_to_id, fine_to_coarse_id, train_transform)
+    dev_ds = WasteDataset(args.data_root, dev_rows, fine_name_to_id, fine_to_coarse_id, dev_transform)
+
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.num_workers,
+        pin_memory=True,
+        persistent_workers=(args.num_workers > 0),
+    )
+    dev_loader = DataLoader(
+        dev_ds,
+        batch_size=args.batch_size,
+        shuffle=False,
+        num_workers=args.num_workers,
+        pin_memory=True,
+        persistent_workers=(args.num_workers > 0),
+    )
+
+    # 2. Khởi tạo mô hình
+    model = create_model(args.model, num_classes=num_fine_classes, pretrained=True)
+    model = model.to(device, memory_format=torch.channels_last)
+
     optimizer = torch.optim.SGD(
         model.parameters(),
-        lr=lr,
-        momentum=float(protocol["momentum"]),
-        weight_decay=float(protocol["weight_decay"]),
+        lr=args.lr,
+        momentum=0.9,
+        weight_decay=args.weight_decay,
     )
-    warmup_epochs = int(protocol["lr_schedule"].get("warmup_epochs", 5))
-    warmup_scheduler = torch.optim.lr_scheduler.LinearLR(
-        optimizer, start_factor=0.01, end_factor=1.0, total_iters=warmup_epochs
-    )
-    cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer,
-        T_max=epochs - warmup_epochs,
-        eta_min=float(protocol["lr_schedule"]["min_lr"]),
-    )
-    scheduler = torch.optim.lr_scheduler.SequentialLR(
-        optimizer, schedulers=[warmup_scheduler, cosine_scheduler], milestones=[warmup_epochs]
-    )
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs, eta_min=1e-5)
+    criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)
+    scaler = torch.amp.GradScaler('cuda')
 
-    history: list[dict[str, float | int]] = []
-    best_macro_f1 = -1.0
-    start_epoch = 1
-    checkpoint_dir = Path("checkpoints") / args.run_name
-    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    # Thư mục lưu checkpoint & log
+    ckpt_dir = args.checkpoint_dir / args.run_name
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
+    args.out_dir.mkdir(parents=True, exist_ok=True)
+    history_csv = args.out_dir / f"{args.run_name}_history.csv"
 
-    # Resume logic
-    out_dir = args.out_dir
-    out_dir.mkdir(parents=True, exist_ok=True)
-    history_file = out_dir / f"{args.run_name}_history.csv"
+    history = []
+    best_fine_f1 = -1.0
+    total_start_time = time.perf_counter()
 
-    if args.resume and history_file.exists():
-        print(f"Resuming from existing history: {history_file}")
-        with history_file.open("r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                parsed_row = {}
-                for k, v in row.items():
-                    if k == "epoch":
-                        parsed_row[k] = int(v)
-                    else:
-                        parsed_row[k] = float(v)
-                history.append(parsed_row)
-        if history:
-            start_epoch = history[-1]["epoch"] + 1
-            best_macro_f1 = max(r["val_macro_f1"] for r in history)
+    for ep in range(1, args.epochs + 1):
+        t0 = time.perf_counter()
 
-        last_ckpt = checkpoint_dir / "last_state_dict.pt"
-        if last_ckpt.exists():
-            print(f"Loading last checkpoint from {last_ckpt}")
-            ckpt = torch.load(last_ckpt, map_location=device)
-            model.load_state_dict(ckpt["model"])
-            optimizer.load_state_dict(ckpt["optimizer"])
-            scheduler.load_state_dict(ckpt["scheduler"])
+        # --- TRAIN ---
+        model.train()
+        running_loss = 0.0
+        train_samples = 0
 
-    print(f"Training {args.model} on {device} for {epochs} epochs (starting at epoch {start_epoch}).")
-    for epoch in range(start_epoch, epochs + 1):
-        train_loss = train_one_epoch(model, train_loader, criterion, optimizer, device)
-        val_metrics = evaluate(model, val_loader, criterion, device, num_classes=num_classes)
+        for images, fine_labels, _ in train_loader:
+            images = images.to(device, memory_format=torch.channels_last, non_blocking=True)
+            fine_labels = fine_labels.to(device, non_blocking=True)
+
+            optimizer.zero_grad(set_to_none=True)
+
+            with torch.amp.autocast('cuda'):
+                logits = model(images)
+                loss = criterion(logits, fine_labels)
+
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+
+            bs = images.size(0)
+            running_loss += loss.item() * bs
+            train_samples += bs
+
         scheduler.step()
+        train_loss = running_loss / train_samples
+        train_time = time.perf_counter() - t0
 
-        row = {
-            "epoch": epoch,
-            "train_loss": train_loss,
-            "val_loss": val_metrics["loss"],
-            "val_accuracy": val_metrics["accuracy"],
-            "val_macro_f1": val_metrics["macro_f1"],
-            "val_balanced_accuracy": val_metrics["balanced_accuracy"],
-        }
-        for name, f1 in zip(classes, val_metrics["per_class_f1"]):
-            row[f"val_f1_{name}"] = f1
-        for name, support in zip(classes, val_metrics["per_class_support"]):
-            row[f"val_support_{name}"] = support
-        history.append(row)
-        write_history(out_dir / f"{args.run_name}_history.csv", history, classes=classes)
+        # --- EVALUATION (DEV) ---
+        model.eval()
+        dev_loss = 0.0
+        dev_samples = 0
+        y_true_fine = []
+        y_pred_fine = []
+        y_true_coarse = []
+        y_pred_coarse = []
 
-        if val_metrics["macro_f1"] > best_macro_f1:
-            best_macro_f1 = val_metrics["macro_f1"]
-            torch.save(
-                {
-                    "model": args.model,
-                    "run_name": args.run_name,
-                    "epoch": epoch,
-                    "state_dict": model.state_dict(),
-                    "metrics": val_metrics,
-                    "config": config,
-                    "class_weights": dict(zip(classes, class_weights)),
-                },
-                checkpoint_dir / "best.pt",
-            )
+        with torch.no_grad():
+            for images, fine_labels, coarse_labels in dev_loader:
+                images = images.to(device, memory_format=torch.channels_last, non_blocking=True)
+                fine_labels = fine_labels.to(device, non_blocking=True)
 
-        minority_class = classes[class_weights.index(max(class_weights))]
+                with torch.amp.autocast('cuda'):
+                    logits = model(images)
+                    loss = criterion(logits, fine_labels)
+
+                bs = images.size(0)
+                dev_loss += loss.item() * bs
+                dev_samples += bs
+
+                preds_fine = logits.argmax(dim=1).cpu().numpy()
+                preds_coarse = np.array([fine_to_coarse_id[p] for p in preds_fine])
+
+                y_true_fine.extend(fine_labels.cpu().numpy())
+                y_pred_fine.extend(preds_fine)
+                y_true_coarse.extend(coarse_labels.numpy())
+                y_pred_coarse.extend(preds_coarse)
+
+        val_loss = dev_loss / dev_samples
+        f1_fine = f1_score(y_true_fine, y_pred_fine, average="macro") * 100.0
+        acc_fine = accuracy_score(y_true_fine, y_pred_fine) * 100.0
+        f1_coarse = f1_score(y_true_coarse, y_pred_coarse, average="macro") * 100.0
+        acc_coarse = accuracy_score(y_true_coarse, y_pred_coarse) * 100.0
+
+        is_best = f1_fine > best_fine_f1
+        if is_best:
+            best_fine_f1 = f1_fine
+            torch.save({
+                "epoch": ep,
+                "model_state_dict": model.state_dict(),
+                "f1_fine": f1_fine,
+                "f1_coarse": f1_coarse,
+                "model_name": args.model,
+                "num_classes": num_fine_classes,
+            }, ckpt_dir / "best.pt")
+
+        # Cầu chì phân kỳ (§5.1: dừng nếu loss NaN hoặc F1 Dev < 30% sau epoch 20)
+        if ep >= 20 and f1_fine < 30.0:
+            print(f"\n[CẦU CHÌ KÍCH HOẠT] F1 Dev ({f1_fine:.2f}%) quá thấp sau 20 epoch. Dừng tiến trình để tránh lãng phí GPU.")
+            break
+
         print(
-            "epoch={epoch} train_loss={train_loss:.4f} "
-            "val_loss={val_loss:.4f} val_acc={val_accuracy:.4f} "
-            "val_macro_f1={val_macro_f1:.4f} "
-            "val_f1[{minority_class}]={minority_f1:.4f} (n={minority_n})".format(
-                minority_class=minority_class,
-                minority_f1=row[f"val_f1_{minority_class}"],
-                minority_n=row[f"val_support_{minority_class}"],
-                **row,
-            )
+            f"Epoch {ep:02d}/{args.epochs:02d} [{train_time:.1f}s] | "
+            f"Train Loss: {train_loss:.4f} | "
+            f"Dev Loss: {val_loss:.4f} | "
+            f"Fine F1: {f1_fine:.2f}% (Acc: {acc_fine:.2f}%) | "
+            f"3-Class F1: {f1_coarse:.2f}% {'*BEST*' if is_best else ''}"
         )
+        sys.stdout.flush()
 
-        torch.save({
-            "model": model.state_dict(),
-            "optimizer": optimizer.state_dict(),
-            "scheduler": scheduler.state_dict(),
-        }, checkpoint_dir / "last_state_dict.pt")
+        history.append({
+            "epoch": ep,
+            "train_time_sec": f"{train_time:.2f}",
+            "train_loss": f"{train_loss:.4f}",
+            "dev_loss": f"{val_loss:.4f}",
+            "dev_fine_f1": f"{f1_fine:.2f}",
+            "dev_fine_acc": f"{acc_fine:.2f}",
+            "dev_coarse_f1": f"{f1_coarse:.2f}",
+            "dev_coarse_acc": f"{acc_coarse:.2f}",
+        })
+
+    # Lưu checkpoint last
+    torch.save({
+        "epoch": int(history[-1]["epoch"]),
+        "model_state_dict": model.state_dict(),
+        "final_f1_fine": history[-1]["dev_fine_f1"],
+        "model_name": args.model,
+    }, ckpt_dir / "last.pt")
+
+    # Ghi toàn bộ lịch sử ra CSV
+    fieldnames = ["epoch", "train_time_sec", "train_loss", "dev_loss", "dev_fine_f1", "dev_fine_acc", "dev_coarse_f1", "dev_coarse_acc"]
+    with history_csv.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(history)
+
+    total_time = (time.perf_counter() - total_start_time) / 60.0
+    print(f"\n[HOÀN TẤT] Tổng thời gian: {total_time:.2f} phút.")
+    print(f"Best Fine F1: {best_fine_f1:.2f}%")
+    print(f"Checkpoint lưu tại: {ckpt_dir / 'best.pt'}")
+    print(f"Lịch sử lưu tại: {history_csv}")
 
 
 if __name__ == "__main__":
     main()
-
-

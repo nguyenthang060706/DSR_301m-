@@ -14,89 +14,91 @@ def read_split_csv(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(f))
 
 
-def compute_class_weights(config: dict) -> list[float]:
-    """Inverse-frequency class weights computed from the actual train split
-    (trashnet_cv_folds.csv), aligned 1:1 with config["classes"] order.
+def load_label_map(path: Path) -> tuple[dict[str, int], dict[int, int], list[str], list[str]]:
+    """Loads label_map.csv defining fine-grained to coarse 3-class mapping.
 
-    weight_c = N / (K * count_c)  ?" same convention as sklearn's
-    class_weight="balanced". Computed from the real split file (not a
-    hard-coded/estimated distribution) so it stays correct if the split,
-    dedup, or holdout ratio ever changes.
+    Returns:
+        fine_name_to_id: dict[str, int]
+        fine_to_coarse_id: dict[int, int]
+        fine_classes: list[str]
+        coarse_classes: list[str] (length 3: ['organic', 'recyclable', 'other_landfill'])
     """
-    classes = list(config["classes"])
-    split_dir = Path(config["data"]["split_dir"])
-    all_cv_rows = read_split_csv(split_dir / "trashnet_cv_folds.csv")
-    val_fold = str(config.get("data", {}).get("val_fold", 0))
-    train_rows = [r for r in all_cv_rows if str(r.get("fold", "")) != val_fold]
+    fine_name_to_id: dict[str, int] = {}
+    fine_to_coarse_id: dict[int, int] = {}
+    fine_classes_dict: dict[int, str] = {}
+    coarse_classes_dict: dict[int, str] = {}
 
-    counts = {name: 0 for name in classes}
-    for row in train_rows:
-        counts[row["class"]] += 1
+    with path.open("r", newline="", encoding="utf-8") as f:
+        # Filter comment lines before parsing CSV
+        lines = [line for line in f if not line.strip().startswith("#")]
+        for row in csv.DictReader(lines):
+            if not row or not row.get("fine_id"):
+                continue
+            f_id = int(row["fine_id"])
+            f_name = row["fine_label"].strip()
+            c_id = int(row["coarse_id"])
+            c_name = row["coarse_label"].strip()
 
-    total = sum(counts.values())
-    num_classes = len(classes)
-    if total == 0:
-        return [1.0 for _ in classes]
+            fine_name_to_id[f_name] = f_id
+            fine_to_coarse_id[f_id] = c_id
+            fine_classes_dict[f_id] = f_name
+            coarse_classes_dict[c_id] = c_name
 
-    weights: list[float] = []
-    for name in classes:
-        count = counts[name]
-        if count == 0:
-            raise ValueError(
-                f"Class '{name}' has 0 examples in the train split ({split_dir / 'trashnet_cv_folds.csv'}); "
-                "cannot compute a finite inverse-frequency weight for it."
-            )
-        weights.append(total / (num_classes * count))
-    return weights
+    fine_classes = [fine_classes_dict[i] for i in sorted(fine_classes_dict.keys())]
+    coarse_classes = [coarse_classes_dict[i] for i in sorted(coarse_classes_dict.keys())]
+
+    return fine_name_to_id, fine_to_coarse_id, fine_classes, coarse_classes
 
 
-def create_transforms(image_size: int, train: bool):
+def create_transforms(image_size: int = 224, train: bool = True, use_trivial_augment: bool = True):
+    """Creates modern transforms conforming to Kế hoạch MASTER v9.5 §5.0.
+
+    - Train: RandomResizedCrop (preserves aspect ratio) + RandomHorizontalFlip + TrivialAugmentWide
+    - Val/Test: Resize(256) + CenterCrop(224) (no distortion)
+    """
     try:
         from torchvision import transforms
     except ImportError as exc:
         raise RuntimeError("torchvision is required for data transforms.") from exc
 
     if train:
-        return transforms.Compose(
-            [
-                transforms.Resize((image_size, image_size)),
-                transforms.RandomHorizontalFlip(p=0.5),
-                transforms.RandomRotation(degrees=10),
-                transforms.ToTensor(),
-                transforms.Normalize(
-                    mean=(0.485, 0.456, 0.406),
-                    std=(0.229, 0.224, 0.225),
-                ),
-            ]
-        )
-
-    return transforms.Compose(
-        [
-            transforms.Resize((image_size, image_size)),
-            transforms.ToTensor(),
-            transforms.Normalize(
-                mean=(0.485, 0.456, 0.406),
-                std=(0.229, 0.224, 0.225),
-            ),
+        t_list = [
+            transforms.RandomResizedCrop(image_size, scale=(0.8, 1.0)),
+            transforms.RandomHorizontalFlip(p=0.5),
         ]
-    )
+        if use_trivial_augment:
+            t_list.append(transforms.TrivialAugmentWide())
+        t_list.extend([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+        ])
+        return transforms.Compose(t_list)
+
+    # Standard non-distorted validation/test transform
+    resize_dim = int(image_size * 256.0 / 224.0)
+    return transforms.Compose([
+        transforms.Resize(resize_dim),
+        transforms.CenterCrop(image_size),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+    ])
 
 
-class CsvImageDataset(Dataset):
+class WasteDataset(Dataset):
+    """Dataset supporting fine-grained labels and automatic coarse 3-class mapping."""
+
     def __init__(
         self,
         data_root: Path,
         rows: list[dict[str, str]],
-        classes: list[str],
+        fine_name_to_id: dict[str, int],
+        fine_to_coarse_id: dict[int, int],
         transform,
     ) -> None:
-        if Dataset is object:
-            raise RuntimeError("torch is required for image datasets.")
-
         self.data_root = data_root
         self.rows = rows
-        self.classes = classes
-        self.class_to_index = {name: index for index, name in enumerate(classes)}
+        self.fine_name_to_id = fine_name_to_id
+        self.fine_to_coarse_id = fine_to_coarse_id
         self.transform = transform
 
     def __len__(self) -> int:
@@ -111,68 +113,10 @@ class CsvImageDataset(Dataset):
         row = self.rows[index]
         image_path = self.data_root / row["path"]
         image = Image.open(image_path).convert("RGB")
-        label = self.class_to_index[row["class"]]
-        return self.transform(image), label
 
+        fine_name = row.get("fine_label") or row.get("class")
+        fine_id = self.fine_name_to_id[fine_name]
+        coarse_id = self.fine_to_coarse_id[fine_id]
 
-def make_week1_loaders(
-    config: dict,
-    batch_size: int,
-    generator=None,
-    worker_init_fn=None,
-):
-    try:
-        from torch.utils.data import DataLoader
-    except ImportError as exc:
-        raise RuntimeError("torch is required for DataLoader.") from exc
-
-    data_root = Path(config["data"]["trashnet_root"])
-    split_dir = Path(config["data"]["split_dir"])
-    classes = list(config["classes"])
-    image_size = int(config["data"]["image_size"])
-    num_workers = int(config["data"].get("num_workers", 0))
-
-    all_cv_rows = read_split_csv(split_dir / "trashnet_cv_folds.csv")
-    
-    # Lấy val_fold từ config (mặc định là 0 cho các thí nghiệm exploratory Tuần 1-7)
-    val_fold = str(config.get("data", {}).get("val_fold", 0))
-    
-    # MASTER PLAN §6.4 FIX: Tuyệt đối KHÔNG dùng dev_corruption_holdout làm val set hàng ngày.
-    train_rows = [r for r in all_cv_rows if str(r.get("fold", "")) != val_fold]
-    val_rows = [r for r in all_cv_rows if str(r.get("fold", "")) == val_fold]
-
-    train_dataset = CsvImageDataset(
-        data_root=data_root,
-        rows=train_rows,
-        classes=classes,
-        transform=create_transforms(image_size=image_size, train=True),
-    )
-    val_dataset = CsvImageDataset(
-        data_root=data_root,
-        rows=val_rows,
-        classes=classes,
-        transform=create_transforms(image_size=image_size, train=False),
-    )
-
-    loader_kwargs = {}
-    if generator is not None:
-        loader_kwargs["generator"] = generator
-    if worker_init_fn is not None:
-        loader_kwargs["worker_init_fn"] = worker_init_fn
-
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers,
-        pin_memory=True,
-        **loader_kwargs,
-    )
-    val_loader = DataLoader(
-        val_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        pin_memory=True,
-    )
-    return train_loader, val_loader
+        # Returns image, fine_id, coarse_id
+        return self.transform(image), fine_id, coarse_id

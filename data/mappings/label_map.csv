@@ -1,0 +1,34 @@
+# label_map.csv
+# Bảng ánh xạ 30 lớp nhãn mịn (Household & Recyclable Waste) sang 3 nhóm quyết định Canteen
+# Phiên bản: 2.0 (Khóa theo Kế hoạch MASTER v9.5 §3.1)
+fine_id,fine_label,coarse_id,coarse_label,description
+0,aerosol_cans,1,recyclable,Bình xịt kim loại rỗng sạch
+1,aluminum_food_cans,1,recyclable,Hộp nhôm đựng thực phẩm sạch
+2,aluminum_soda_cans,1,recyclable,Lon nhôm nước ngọt bia sạch ráo
+3,cardboard_boxes,1,recyclable,Thùng bìa carton sạch khô
+4,cardboard_packaging,1,recyclable,Bao bì giấy cứng carton sạch
+5,clothing,2,other_landfill,Quần áo vải vụn cũ
+6,coffee_grounds,0,organic,Bã cà phê
+7,disposable_plastic_cutlery,2,other_landfill,Muỗng nĩa dao nhựa dùng 1 lần
+8,eggshells,0,organic,Vỏ trứng
+9,food_waste,0,organic,Cơm thừa mì thịt cá rau củ thức ăn chế biến
+10,glass_beverage_bottles,1,recyclable,Chai thủy tinh đựng đồ uống sạch
+11,glass_cosmetic_containers,1,recyclable,Lọ thủy tinh sạch
+12,glass_food_jars,1,recyclable,Hũ thủy tinh đựng thực phẩm sạch
+13,magazines,1,recyclable,Tạp chí giấy in màu sạch
+14,newspaper,1,recyclable,Báo giấy sạch
+15,office_paper,1,recyclable,Giấy văn phòng tài liệu in sạch
+16,paper_cups,2,other_landfill,Ly giấy tráng màng PE bẩn dính thức uống
+17,plastic_cup_lids,2,other_landfill,Nắp ly nhựa dính thức uống
+18,plastic_detergent_bottles,1,recyclable,Chai nhựa cứng đựng chất tẩy rửa sạch
+19,plastic_food_containers,1,recyclable,Hộp nhựa cứng trong suốt sạch
+20,plastic_shopping_bags,2,other_landfill,Túi nilon màng mềm
+21,plastic_soda_bottles,1,recyclable,Chai nhựa PET nước ngọt có ga sạch ráo
+22,plastic_straws,2,other_landfill,Ống hút nhựa
+23,plastic_trash_bags,2,other_landfill,Túi nilon rác màng mỏng
+24,plastic_water_bottles,1,recyclable,Chai nhựa PET nước khoáng sạch ráo
+25,shoes,2,other_landfill,Giày dép cũ hư hỏng
+26,steel_food_cans,1,recyclable,Hộp sắt thép đóng hộp sạch
+27,styrofoam_cups,2,other_landfill,Ly xốp dính thức uống
+28,styrofoam_food_containers,2,other_landfill,Hộp xốp đựng xôi cơm dính dầu mỡ
+29,tea_bags,0,organic,Túi lọc trà bã trà
