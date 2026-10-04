@@ -1,0 +1,71 @@
+{"kind":"deck","id":"pr/4nenup","name":"Deck"}
+{"kind":"layout","layoutId":"/ppt/slideMasters/slideMaster1.xml","name":"","type":"master"}
+{"kind":"layout","layoutId":"/ppt/slideLayouts/slideLayout1.xml","name":"DEFAULT"}
+{"kind":"slide","id":"sl/y90nupkv","slide":1,"title":"Họp nhóm: Thu thập dữ liệu","textShapes":3}
+{"kind":"textbox","id":"sh/547294r6","slide":1,"name":"Text 0","text":"Họp nhóm: Thu thập dữ liệu","textPreview":"Họp nhóm: Thu thập dữ liệu","textChars":26,"textLines":1,"bbox":[67.2,153.6,825.6,96]}
+{"kind":"textbox","id":"sh/k3yl0zql","slide":1,"name":"Text 1","text":"Các vấn đề đã thảo luận và thống nhất của nhóm","textPreview":"Các vấn đề đã thảo luận và thống nhất của nhóm","textChars":46,"textLines":1,"bbox":[67.2,259.2,825.6,57.6]}
+{"kind":"textbox","id":"sh/7qp4be9c","slide":1,"name":"Text 2","text":"Knowledge Distillation cho phân loại rác canteen trên thiết bị biên, theo kế hoạch MASTER v9.5","textPreview":"Knowledge Distillation cho phân loại rác canteen trên thiết bị biên, theo kế hoạch MASTER v9.5","textChars":94,"textLines":1,"bbox":[67.2,441.6,825.6,38.4]}
+{"kind":"notes","id":"nt/y90nupkv","slide":1,"text":""}
+{"kind":"slide","id":"sl/hwbqtkby","slide":2,"title":"Mục tiêu dữ liệu: 3 nhóm quyết định","textShapes":9}
+{"kind":"shape","id":"sh/9072xkry","slide":2,"name":"Shape 0","bbox":[0,0,17.28,540]}
+{"kind":"textbox","id":"sh/ozy1ofad","slide":2,"name":"Text 1","text":"Mục tiêu dữ liệu: 3 nhóm quyết định","textPreview":"Mục tiêu dữ liệu: 3 nhóm quyết định","textChars":35,"textLines":1,"bbox":[57.6,33.6,844.8,76.8]}
+{"kind":"textbox","id":"sh/b29kza94","slide":2,"name":"Text 2","text":"2","textPreview":"2","textChars":1,"textLines":1,"bbox":[864,499.2,57.6,28.8]}
+{"kind":"shape","id":"sh/a10jqpsj","slide":2,"name":"Shape 3","bbox":[57.6,134.4,268.8,182.4]}
+{"kind":"textbox","id":"sh/x4r21kru","slide":2,"name":"Text 4","text":"Hữu cơ","textPreview":"Hữu cơ","textChars":6,"textLines":1,"bbox":[57.6,148.8,268.8,91.2]}
+{"kind":"textbox","id":"sh/w3i1sfa9","slide":2,"name":"Text 5","text":"Thức ăn thừa, vỏ hoa quả","textPreview":"Thức ăn thừa, vỏ hoa quả","textChars":24,"textLines":1,"bbox":[72,234.72,240,72.96]}
+{"kind":"shape","id":"sh/r65knqtk","slide":2,"name":"Shape 6","bbox":[345.6,134.4,268.8,182.4]}
+{"kind":"textbox","id":"sh/q5wjelsz","slide":2,"name":"Text 7","text":"Tái chế khô","textPreview":"Tái chế khô","textChars":11,"textLines":1,"bbox":[345.6,148.8,268.8,91.2]}
+{"kind":"textbox","id":"sh/ove9o7yd","slide":2,"name":"Text 8","text":"Chai nhựa sạch, lon nhôm, hộp giấy sạch","textPreview":"Chai nhựa sạch, lon nhôm, hộp giấy sạch","textChars":39,"textLines":1,"bbox":[360,234.72,240,72.96]}
+{"kind":"shape","id":"sh/9wnqhczy","slide":2,"name":"Shape 9","bbox":[633.6,134.4,268.8,182.4]}
+{"kind":"textbox","id":"sh/mtwrmxg7","slide":2,"name":"Text 10","text":"Còn lại","textPreview":"Còn lại","textChars":7,"textLines":1,"bbox":[633.6,148.8,268.8,91.2]}
+{"kind":"textbox","id":"sh/nu58f2hs","slide":2,"name":"Text 11","text":"Hộp xốp bẩn, túi nilon dính dầu, giấy ăn bẩn","textPreview":"Hộp xốp bẩn, túi nilon dính dầu, giấy ăn bẩn","textChars":44,"textLines":1,"bbox":[648,234.72,240,72.96]}
+{"kind":"textbox","id":"sh/wjy9sry9","slide":2,"name":"Text 12","text":"Phân loại theo quyết định bỏ rác thực tế tại canteen\nCần 2 nguồn dữ liệu: ảnh công khai để huấn luyện và ảnh canteen thật để kiểm tra miền triển khai","textPreview":"Phân loại theo quyết định bỏ rác thực tế tại canteen | Cần 2 nguồn dữ liệu: ảnh công khai để huấn luyện và ảnh canteen thật để kiểm tra m...","textChars":149,"textLines":2,"bbox":[57.6,355.2,844.8,134.4]}
+{"kind":"notes","id":"nt/hwbqtkby","slide":2,"text":""}
+{"kind":"slide","id":"sl/ofy9wn61","slide":3,"title":"Nguồn dữ liệu và thiết kế nhãn","textShapes":3}
+{"kind":"shape","id":"sh/cza94vmx","slide":3,"name":"Shape 0","bbox":[0,0,17.28,540]}
+{"kind":"textbox","id":"sh/d0jax03i","slide":3,"name":"Text 1","text":"Nguồn dữ liệu và thiết kế nhãn","textPreview":"Nguồn dữ liệu và thiết kế nhãn","textChars":30,"textLines":1,"bbox":[57.6,33.6,844.8,76.8]}
+{"kind":"textbox","id":"sh/298ryl4v","slide":3,"name":"Text 2","text":"3","textPreview":"3","textChars":1,"textLines":1,"bbox":[864,499.2,57.6,28.8]}
+{"kind":"textbox","id":"sh/3ah8rqlg","slide":3,"name":"Text 3","text":"Hiện trạng: đã có 15.000 ảnh công khai, đã map nhãn và chia Train/Dev cố định\nNguồn công khai: Kaggle Recyclable and Household Waste 30 lớp, hoặc TrashBusters làm phương án thay thế\nXử lý: tạo label_map.csv, gộp 30 lớp mịn về 3 nhóm quyết định, kiểm tra rò rỉ Train/Dev\nChia dữ liệu: 12.750 ảnh Train và 2.250 ảnh Dev/Holdout, tách theo lớp và domain\nDữ liệu canteen thật: chưa thu thập xong, đang chuẩn bị quy trình chụp và gán nhãn","textPreview":"Hiện trạng: đã có 15.000 ảnh công khai, đã map nhãn và chia Train/Dev cố định | Nguồn công khai: Kaggle Recyclable and Household Waste 30...","textChars":433,"textLines":5,"bbox":[57.6,134.4,844.8,345.6]}
+{"kind":"notes","id":"nt/ofy9wn61","slide":3,"text":""}
+{"kind":"slide","id":"sl/jyx0ra1s","slide":4,"title":"Quy ước nhãn và kiểm định chất lượng","textShapes":9}
+{"kind":"shape","id":"sh/1cj2d8b6","slide":4,"name":"Shape 0","bbox":[0,0,17.28,540]}
+{"kind":"textbox","id":"sh/0ba143al","slide":4,"name":"Text 1","text":"Quy ước nhãn và kiểm định chất lượng","textPreview":"Quy ước nhãn và kiểm định chất lượng","textChars":36,"textLines":1,"bbox":[57.6,33.6,844.8,76.8]}
+{"kind":"textbox","id":"sh/rm1k7yt4","slide":4,"name":"Text 2","text":"4","textPreview":"4","textChars":1,"textLines":1,"bbox":[864,499.2,57.6,28.8]}
+{"kind":"shape","id":"sh/ql8jytsj","slide":4,"name":"Shape 3","bbox":[57.6,134.4,268.8,163.2]}
+{"kind":"textbox","id":"sh/doj29oba","slide":4,"name":"Text 4","text":"κ ≥ 0,70","textPreview":"κ ≥ 0,70","textChars":8,"textLines":1,"bbox":[57.6,148.8,268.8,81.6]}
+{"kind":"textbox","id":"sh/sna103ap","slide":4,"name":"Text 5","text":"Cohen's kappa giữa 2 người gán","textPreview":"Cohen's kappa giữa 2 người gán","textChars":30,"textLines":1,"bbox":[72,224.16,240,65.28]}
+{"kind":"shape","id":"sh/3ihk3et8","slide":4,"name":"Shape 6","bbox":[345.6,134.4,268.8,163.2]}
+{"kind":"textbox","id":"sh/ih8ju9sn","slide":4,"name":"Text 7","text":"100 ảnh","textPreview":"100 ảnh","textChars":7,"textLines":1,"bbox":[345.6,148.8,268.8,81.6]}
+{"kind":"textbox","id":"sh/kbm987y5","slide":4,"name":"Text 8","text":"Gán thử độc lập ở tuần 1","textPreview":"Gán thử độc lập ở tuần 1","textChars":24,"textLines":1,"bbox":[360,224.16,240,65.28]}
+{"kind":"shape","id":"sh/5cva1cfq","slide":4,"name":"Shape 9","bbox":[633.6,134.4,268.8,163.2]}
+{"kind":"textbox","id":"sh/i94r6xgz","slide":4,"name":"Text 10","text":"Ảnh mơ hồ","textPreview":"Ảnh mơ hồ","textChars":9,"textLines":1,"bbox":[633.6,148.8,268.8,81.6]}
+{"kind":"textbox","id":"sh/jadsz2xk","slide":4,"name":"Text 11","text":"Gắn cờ ảnh khó và báo cáo riêng","textPreview":"Gắn cờ ảnh khó và báo cáo riêng","textChars":31,"textLines":1,"bbox":[648,224.16,240,65.28]}
+{"kind":"textbox","id":"sh/w72947yt","slide":4,"name":"Text 12","text":"Trước khi chụp: viết docs/label_guide.md, quy định rõ ca ranh giới như ly nhựa dính trà sữa hoặc hộp xốp dính dầu thuộc nhóm \"Còn lại\"\nKhi gán nhãn: 2 người gán độc lập 100 ảnh thử, yêu cầu Cohen's kappa >= 0,70\nSau khi gán: ảnh mơ hồ được gắn cờ riêng và không dùng để tinh chỉnh mô hình","textPreview":"Trước khi chụp: viết docs/label_guide.md, quy định rõ ca ranh giới như ly nhựa dính trà sữa hoặc hộp xốp dính dầu thuộc nhóm \"Còn lại\" | ...","textChars":288,"textLines":3,"bbox":[57.6,326.4,844.8,172.8]}
+{"kind":"notes","id":"nt/jyx0ra1s","slide":4,"text":""}
+{"kind":"slide","id":"sl/i107q5of","slide":5,"title":"Thu thập ảnh canteen","textShapes":9}
+{"kind":"shape","id":"sh/dgbulwnm","slide":5,"name":"Shape 0","bbox":[0,0,17.28,540]}
+{"kind":"textbox","id":"sh/cf2tcr61","slide":5,"name":"Text 1","text":"Thu thập ảnh canteen","textPreview":"Thu thập ảnh canteen","textChars":20,"textLines":1,"bbox":[57.6,33.6,844.8,76.8]}
+{"kind":"textbox","id":"sh/z2tcnm5s","slide":5,"name":"Text 2","text":"5","textPreview":"5","textChars":1,"textLines":1,"bbox":[864,499.2,57.6,28.8]}
+{"kind":"shape","id":"sh/yhkbe1o7","slide":5,"name":"Shape 3","bbox":[57.6,134.4,268.8,144]}
+{"kind":"textbox","id":"sh/l4bupwny","slide":5,"name":"Text 4","text":"≥ 200","textPreview":"≥ 200","textChars":5,"textLines":1,"bbox":[57.6,148.8,268.8,72]}
+{"kind":"textbox","id":"sh/032tgr6d","slide":5,"name":"Text 5","text":"ảnh/nhóm cho Test canteen, khoảng 600 ảnh","textPreview":"ảnh/nhóm cho Test canteen, khoảng 600 ảnh","textChars":41,"textLines":1,"bbox":[72,213.6,240,57.6]}
+{"kind":"shape","id":"sh/n6dcr65o","slide":5,"name":"Shape 6","bbox":[345.6,134.4,268.8,144]}
+{"kind":"textbox","id":"sh/m5kbi1oj","slide":5,"name":"Text 7","text":"≥ 100","textPreview":"≥ 100","textChars":5,"textLines":1,"bbox":[345.6,148.8,268.8,72]}
+{"kind":"textbox","id":"sh/w32dkbuh","slide":5,"name":"Text 8","text":"ảnh/nhóm cho pool few-shot","textPreview":"ảnh/nhóm cho pool few-shot","textChars":26,"textLines":1,"bbox":[360,213.6,240,57.6]}
+{"kind":"shape","id":"sh/x4vedgvm","slide":5,"name":"Shape 9","bbox":[633.6,134.4,268.8,144]}
+{"kind":"textbox","id":"sh/ahkvi1cb","slide":5,"name":"Text 10","text":"≥ 50","textPreview":"≥ 50","textChars":4,"textLines":1,"bbox":[633.6,148.8,268.8,72]}
+{"kind":"textbox","id":"sh/v2twb6dw","slide":5,"name":"Text 11","text":"ảnh/nhóm cho Validation canteen","textPreview":"ảnh/nhóm cho Validation canteen","textChars":31,"textLines":1,"bbox":[648,213.6,240,57.6]}
+{"kind":"textbox","id":"sh/k7mxovud","slide":5,"name":"Text 12","text":"Thu thập canteen: chụp top-down trên khay hoặc bàn đồng nhất, một vật chính mỗi ảnh, thay đổi có kiểm soát về ánh sáng, góc xoay và độ bẩn\nMetadata: ghi cluster_id gồm ngày chụp, ca ăn và vật phẩm cụ thể để tránh rò rỉ dữ liệu\nXử lý sau thu thập: chia Val/Test/Few-shot theo cụm hoặc ngày, không chia ngẫu nhiên từng ảnh","textPreview":"Thu thập canteen: chụp top-down trên khay hoặc bàn đồng nhất, một vật chính mỗi ảnh, thay đổi có kiểm soát về ánh sáng, góc xoay và độ bẩ...","textChars":320,"textLines":3,"bbox":[57.6,307.2,844.8,192]}
+{"kind":"notes","id":"nt/i107q5of","slide":5,"text":""}
+{"kind":"slide","id":"sl/x8f69ofe","slide":6,"title":"Rủi ro đã thống nhất và cách xử lý","textShapes":3}
+{"kind":"shape","id":"sh/yhg7epsj","slide":6,"name":"Shape 0","bbox":[0,0,17.28,540]}
+{"kind":"textbox","id":"sh/zi98nu94","slide":6,"name":"Text 1","text":"Rủi ro đã thống nhất và cách xử lý","textPreview":"Rủi ro đã thống nhất và cách xử lý","textChars":34,"textLines":1,"bbox":[57.6,33.6,844.8,76.8]}
+{"kind":"textbox","id":"sh/87ipkzal","slide":6,"name":"Text 2","text":"6","textPreview":"6","textChars":1,"textLines":1,"bbox":[864,499.2,57.6,28.8]}
+{"kind":"textbox","id":"sh/98rqt4r6","slide":6,"name":"Text 3","text":"Rủi ro chính: hiện chưa có dữ liệu canteen thật nên kết quả hiện tại mới dựa trên dữ liệu công khai đã xử lý\nNếu canteen từ chối cho chụp: xin phép ngay tuần 1, dự phòng bằng cách mua đồ ăn canteen về phòng thực nghiệm và dựng góc chụp mô phỏng\nNếu Test canteen quá nhỏ: dùng Cluster Bootstrap theo cluster_id và báo cáo effect size\nNếu trễ ở mốc Go/No-go tuần 5: loại M7 và Canteen-C, dồn thời gian cho Tier B, few-shot và đo trên thiết bị biên","textPreview":"Rủi ro chính: hiện chưa có dữ liệu canteen thật nên kết quả hiện tại mới dựa trên dữ liệu công khai đã xử lý | Nếu canteen từ chối cho ch...","textChars":445,"textLines":4,"bbox":[57.6,134.4,844.8,345.6]}
+{"kind":"notes","id":"nt/x8f69ofe","slide":6,"text":""}
+{"kind":"slide","id":"sl/gnmp4jqx","slide":7,"title":"Tiến độ và việc cần làm tiếp","textShapes":3}
+{"kind":"shape","id":"sh/cb2tkvap","slide":7,"name":"Shape 0","bbox":[0,0,17.28,540]}
+{"kind":"textbox","id":"sh/dcbud0ra","slide":7,"name":"Text 1","text":"Tiến độ và việc cần làm tiếp","textPreview":"Tiến độ và việc cần làm tiếp","textChars":28,"textLines":1,"bbox":[57.6,33.6,844.8,76.8]}
+{"kind":"textbox","id":"sh/ydkbm5sv","slide":7,"name":"Text 2","text":"7","textPreview":"7","textChars":1,"textLines":1,"bbox":[864,499.2,57.6,28.8]}
+{"kind":"textbox","id":"sh/zedcfa9g","slide":7,"name":"Text 3","text":"Đã làm: xử lý dữ liệu công khai 15.000 ảnh, tạo label_map.csv và chia Train/Dev cố định\nTuần 1-2: xin phép canteen, viết label_guide.md, chụp thử khoảng 100 ảnh và kiểm tra kappa >= 0,70\nTuần 3-4: thu thập pool ảnh cốt lõi và Test canteen, ghi metadata theo cluster_id\nTuần 5 Go/No-go: đóng băng Test canteen >= 600 ảnh, kappa >= 0,70, khóa pool ảnh cốt lõi","textPreview":"Đã làm: xử lý dữ liệu công khai 15.000 ảnh, tạo label_map.csv và chia Train/Dev cố định | Tuần 1-2: xin phép canteen, viết label_guide.md...","textChars":357,"textLines":4,"bbox":[57.6,134.4,844.8,345.6]}
+{"kind":"notes","id":"nt/gnmp4jqx","slide":7,"text":""}

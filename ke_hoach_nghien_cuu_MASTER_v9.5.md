@@ -146,10 +146,23 @@ Tổng quát: $\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{CE}} + \alpha \ma
 - **Cluster Bootstrap (theo Cụm vật phẩm / Ngày):** Lấy mẫu lại có hoàn lại ở cấp độ `cluster_id` với $B = 2.000$ lần lặp để tính khoảng tin cậy 95% (95% CI) cho Macro-F1 và Recall từng lớp.
 - Kiểm định McNemar theo cặp trên cùng tập Test cố định (kèm hiệu chỉnh Holm cho đa giả thuyết).
 
-### 7.3 Đường cong Few-Shot trên Canteen (RQ2)
-- Fine-tune các mô hình: **$\{M0, M1, \text{KD tốt nhất trong } \{M1b, M2, M3, M4\}\}$** từ Tier A và Tier B.
-- Dùng các mức $k \in \{0, 10, 25, 50, 100\}$ ảnh/nhóm từ pool canteen. Mỗi mức $k$ lặp lại 3 lần với các cụm con ngẫu nhiên.
-- **Nguyên tắc:** Fine-tune bằng **nhãn mịn** với số epoch cố định (không early stopping theo từng run vì tập validation canteen nhỏ); sau đó suy luận và đánh giá trên tập Test canteen 3 nhóm cố định.
+### 7.3 Phương án Tinh chỉnh Thích nghi Ít mẫu bằng Ảnh Cốt lõi Canteen (RQ2 - Few-Shot Adaptation)
+- **Định nghĩa Ảnh Cốt lõi (Core Canteen Images):** Là tập hợp các ảnh rác đại diện thực tế tại canteen trường (hộp xốp dính dầu mỡ, ly nhựa dính đồ uống, thức ăn thừa trên khay ăn, túi nilon mềm, chai lọ/lon canteen) được chụp ở góc độ camera thực tế (top-down khay ăn / miệng thùng rác).
+- **Các mức thí nghiệm $k$-shot:** $k \in \{0, 5, 10, 20, 50\}$ ảnh cốt lõi / nhóm quyết định ($3 \times k$ ảnh tổng).
+  - $k = 0$: Đánh giá Zero-shot (đo mức độ sụt giảm do Domain Gap thuần túy).
+  - $k \in \{5, 10, 20\}$: Đánh giá thích nghi cực hạn (Extreme Few-shot adaptation) — phản ánh năng lực triển khai thực tế khi canteen chỉ chụp mẫu tối thiểu.
+  - $k = 50$: Đánh giá ngưỡng bão hòa thích nghi.
+  - Mỗi mức $k$ được lấy mẫu ngẫu nhiên theo cụm (`cluster_id`) và lặp lại 3 seed để tính giá trị trung bình kèm độ lệch chuẩn.
+- **Quy trình Tinh chỉnh (Fine-tuning Protocol):**
+  1. *Khởi tạo:* Nạp checkpoint tốt nhất của mô hình đã huấn luyện trên tập công khai.
+  2. *Đóng băng có chọn lọc (Layer Freezing):* Thử nghiệm 2 chiến lược:
+     - **Head Adaptation (Linear Probing):** Đóng băng toàn bộ backbone, chỉ cập nhật classification head với LR $10^{-3}$, 10 epoch.
+     - **Full Fine-tuning nhẹ:** Mở khóa toàn bộ mô hình, huấn luyện với LR rất nhỏ ($10^{-4}$ với Cosine decay), weight decay $10^{-4}$, 15 epoch, tránh hiện tượng quên thảm họa (catastrophic forgetting).
+- **Mục tiêu so sánh khoa học:**
+  - So sánh tốc độ phục hồi độ chính xác giữa: $\{M0, M1, M1b, \text{KD tốt nhất}\}$ trên cả Tier A (ResNet18) và Tier B (MobileNet).
+  - Kiểm chứng giả thuyết: *Mô hình học qua Knowledge Distillation sở hữu không gian đặc trưng khái quát hơn, giúp thích nghi nhanh hơn với độ dốc F1 cao hơn so với mô hình Student tự học (M0) khi chỉ có lượng ảnh cốt lõi rất nhỏ.*
+- **Tập đánh giá độc lập (Frozen Test Set):** Đánh giá tuyệt đối trên tập Test Canteen cố định ($\ge 600$ ảnh, hoàn toàn cách ly với pool ảnh cốt lõi).
+
 
 ---
 
@@ -185,14 +198,15 @@ Tổng quát: $\mathcal{L}_{\text{total}} = \mathcal{L}_{\text{CE}} + \alpha \ma
 ### 9.2 Timeline thực hiện theo tuần
 
 ```
-Tuần 1-2: Setup, Pilot, Khóa Teacher & Khóa Student Tier B; Chụp ảnh đợt 1
-Tuần 3-4: Tune M1, M1b, M2, M3, M4; Chạy Main runs đợt đầu (M0, M1, M1b)
-Tuần 5:   [GO/NO-GO] Hoàn tất Main runs Tier A; Đóng băng Test Canteen; Bắt đầu viết Related Work
-Tuần 6-7: Tier B (MobileNet); Thí nghiệm độ mịn nhãn; Viết Methods
-Tuần 8-9: Chạy Few-shot thích nghi Canteen; Đánh giá ngoại lai TACO/RealWaste
-Tuần 10-11: Xuất INT8, đo kiểm phần cứng thật (Edge Deploy); Phân tích lỗi
-Tuần 12-14: Thống kê Cluster Bootstrap, viết Results/Discussion, hoàn thiện luận văn
+Tuần 1-2:   Setup, Pilot Recipe, Khóa Teacher & Student Tier B; Chụp ảnh cốt lõi Canteen đợt 1 (100 ảnh, Kappa >= 0.70)
+Tuần 3-4:   Tune M1, M1b, M2, M3, M4; Chạy Main runs Tier A; Thu thập mở rộng Canteen pool & Test set
+Tuần 5:     [GO/NO-GO] Hoàn tất Main runs Tier A; ĐÓNG BĂNG Test Canteen (>= 600 ảnh); Khóa pool Ảnh Cốt lõi
+Tuần 6-7:   Huấn luyện Tier B (MobileNet); Thí nghiệm độ mịn nhãn; Viết chương Methods
+Tuần 8-9:   [THỰC HIỆN FINETUNING RQ2] Chạy thực nghiệm Thích nghi ít mẫu bằng Ảnh Cốt lõi (k-shot in {0, 5, 10, 20, 50})
+Tuần 10-11: Xuất INT8, đo kiểm phần cứng thật (Edge Deploy); Phân tích lỗi (Confusion Matrix, Error Cases)
+Tuần 12-14: Thống kê Cluster Bootstrap, viết Results & Discussion, bảo vệ luận văn
 ```
+
 
 ### 9.3 Điểm Go/No-go quyết định (Cuối Tuần 5)
 Tại ngày cuối cùng của Tuần 5, kiểm tra 2 điều kiện:

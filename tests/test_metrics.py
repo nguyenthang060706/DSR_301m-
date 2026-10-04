@@ -1,6 +1,5 @@
 import math
 from dsr.metrics import classification_metrics
-from dsr.data import compute_class_weights
 
 def test_macro_f1_hides_minority_failure():
     """

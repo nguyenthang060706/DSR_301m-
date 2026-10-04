@@ -1,41 +1,36 @@
-import sys
-import unittest
 from pathlib import Path
-
-sys.path.append(str(Path(__file__).resolve().parent.parent))
-
-from scripts.make_trashnet_splits import assign_stratified_folds, stratified_holdout
+import csv
+import unittest
 
 
 class SplitTests(unittest.TestCase):
-    def test_stratified_holdout_keeps_each_class_represented(self) -> None:
-        rows = [
-            {"path": f"{class_name}/{i}.jpg", "class": class_name}
-            for class_name in ("cardboard", "glass", "metal", "paper", "plastic", "trash")
-            for i in range(10)
-        ]
+    def test_public_split_csvs(self) -> None:
+        train_file = Path("data/splits/public_train.csv")
+        dev_file = Path("data/splits/public_dev.csv")
+        split_file = Path("data/splits/public_split.csv")
 
-        holdout, cv_pool = stratified_holdout(rows, holdout_ratio=0.15, seed=1)
+        self.assertTrue(train_file.exists(), "public_train.csv missing")
+        self.assertTrue(dev_file.exists(), "public_dev.csv missing")
+        self.assertTrue(split_file.exists(), "public_split.csv missing")
 
-        self.assertEqual(len(holdout), 12)
-        self.assertEqual(len(cv_pool), 48)
-        self.assertEqual(
-            {row["class"] for row in holdout},
-            {"cardboard", "glass", "metal", "paper", "plastic", "trash"},
-        )
+        with train_file.open("r", encoding="utf-8") as f:
+            train_rows = list(csv.DictReader(f))
+        with dev_file.open("r", encoding="utf-8") as f:
+            dev_rows = list(csv.DictReader(f))
 
-    def test_assign_stratified_folds_is_deterministic(self) -> None:
-        rows = [
-            {"path": f"{class_name}/{i}.jpg", "class": class_name}
-            for class_name in ("cardboard", "glass", "metal", "paper", "plastic", "trash")
-            for i in range(10)
-        ]
+        self.assertEqual(len(train_rows), 12750)
+        self.assertEqual(len(dev_rows), 2250)
 
-        first = assign_stratified_folds(rows, folds=5, seed=20260913)
-        second = assign_stratified_folds(rows, folds=5, seed=20260913)
+        # Leakage check
+        train_paths = {r["path"] for r in train_rows}
+        dev_paths = {r["path"] for r in dev_rows}
+        self.assertEqual(len(train_paths & dev_paths), 0, "No overlap between train and dev")
 
-        self.assertEqual(first, second)
-        self.assertEqual({row["fold"] for row in first}, {0, 1, 2, 3, 4})
+        # Class coverage
+        train_classes = {r["class"] for r in train_rows}
+        dev_classes = {r["class"] for r in dev_rows}
+        self.assertEqual(len(train_classes), 30)
+        self.assertEqual(len(dev_classes), 30)
 
 
 if __name__ == "__main__":
