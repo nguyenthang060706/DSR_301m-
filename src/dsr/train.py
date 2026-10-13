@@ -49,6 +49,7 @@ def parse_args():
     parser.add_argument("--dev-file", type=Path, default=Path("data/splits/public_dev.csv"))
     parser.add_argument("--out-dir", type=Path, default=Path("reports"))
     parser.add_argument("--checkpoint-dir", type=Path, default=Path("checkpoints"))
+    parser.add_argument("--direct-3class", action="store_true", help="Huấn luyện trực tiếp trên 3 nhóm Canteen (Ablation §2)")
     return parser.parse_args()
 
 
@@ -101,7 +102,9 @@ def main():
     )
 
     # 2. Khởi tạo mô hình
-    model = create_model(args.model, num_classes=num_fine_classes, pretrained=True)
+    num_classes = 3 if args.direct_3class else num_fine_classes
+    print(f"Số lớp phân loại đầu ra: {num_classes} ({'Trực tiếp 3 nhóm Canteen' if args.direct_3class else '30 lớp nhãn mịn'})")
+    model = create_model(args.model, num_classes=num_classes, pretrained=True)
     model = model.to(device, memory_format=torch.channels_last)
 
     optimizer = torch.optim.SGD(
@@ -122,6 +125,7 @@ def main():
 
     history = []
     best_fine_f1 = -1.0
+    best_coarse_f1 = -1.0
     total_start_time = time.perf_counter()
 
     for ep in range(1, args.epochs + 1):
@@ -132,15 +136,15 @@ def main():
         running_loss = 0.0
         train_samples = 0
 
-        for images, fine_labels, _ in train_loader:
+        for images, fine_labels, coarse_labels in train_loader:
             images = images.to(device, memory_format=torch.channels_last, non_blocking=True)
-            fine_labels = fine_labels.to(device, non_blocking=True)
+            target_labels = coarse_labels.to(device, non_blocking=True) if args.direct_3class else fine_labels.to(device, non_blocking=True)
 
             optimizer.zero_grad(set_to_none=True)
 
             with torch.amp.autocast('cuda'):
                 logits = model(images)
-                loss = criterion(logits, fine_labels)
+                loss = criterion(logits, target_labels)
 
             scaler.scale(loss).backward()
             scaler.step(optimizer)
@@ -166,18 +170,22 @@ def main():
         with torch.no_grad():
             for images, fine_labels, coarse_labels in dev_loader:
                 images = images.to(device, memory_format=torch.channels_last, non_blocking=True)
-                fine_labels = fine_labels.to(device, non_blocking=True)
+                target_labels = coarse_labels.to(device, non_blocking=True) if args.direct_3class else fine_labels.to(device, non_blocking=True)
 
                 with torch.amp.autocast('cuda'):
                     logits = model(images)
-                    loss = criterion(logits, fine_labels)
+                    loss = criterion(logits, target_labels)
 
                 bs = images.size(0)
                 dev_loss += loss.item() * bs
                 dev_samples += bs
 
-                preds_fine = logits.argmax(dim=1).cpu().numpy()
-                preds_coarse = np.array([fine_to_coarse_id[p] for p in preds_fine])
+                if args.direct_3class:
+                    preds_coarse = logits.argmax(dim=1).cpu().numpy()
+                    preds_fine = preds_coarse
+                else:
+                    preds_fine = logits.argmax(dim=1).cpu().numpy()
+                    preds_coarse = np.array([fine_to_coarse_id[p] for p in preds_fine])
 
                 y_true_fine.extend(fine_labels.cpu().numpy())
                 y_pred_fine.extend(preds_fine)
@@ -185,26 +193,46 @@ def main():
                 y_pred_coarse.extend(preds_coarse)
 
         val_loss = dev_loss / dev_samples
-        f1_fine = f1_score(y_true_fine, y_pred_fine, average="macro") * 100.0
-        acc_fine = accuracy_score(y_true_fine, y_pred_fine) * 100.0
+        if args.direct_3class:
+            f1_fine = 0.0
+            acc_fine = 0.0
+        else:
+            f1_fine = f1_score(y_true_fine, y_pred_fine, average="macro") * 100.0
+            acc_fine = accuracy_score(y_true_fine, y_pred_fine) * 100.0
         f1_coarse = f1_score(y_true_coarse, y_pred_coarse, average="macro") * 100.0
         acc_coarse = accuracy_score(y_true_coarse, y_pred_coarse) * 100.0
 
-        is_best = f1_fine > best_fine_f1
-        if is_best:
-            best_fine_f1 = f1_fine
-            torch.save({
-                "epoch": ep,
-                "model_state_dict": model.state_dict(),
-                "f1_fine": f1_fine,
-                "f1_coarse": f1_coarse,
-                "model_name": args.model,
-                "num_classes": num_fine_classes,
-            }, ckpt_dir / "best.pt")
+        if args.direct_3class:
+            is_best = f1_coarse > best_coarse_f1
+            if is_best:
+                best_coarse_f1 = f1_coarse
+                torch.save({
+                    "epoch": ep,
+                    "model_state_dict": model.state_dict(),
+                    "f1_fine": f1_fine,
+                    "f1_coarse": f1_coarse,
+                    "model_name": args.model,
+                    "num_classes": num_classes,
+                    "direct_3class": True,
+                }, ckpt_dir / "best.pt")
+        else:
+            is_best = f1_fine > best_fine_f1
+            if is_best:
+                best_fine_f1 = f1_fine
+                torch.save({
+                    "epoch": ep,
+                    "model_state_dict": model.state_dict(),
+                    "f1_fine": f1_fine,
+                    "f1_coarse": f1_coarse,
+                    "model_name": args.model,
+                    "num_classes": num_classes,
+                    "direct_3class": False,
+                }, ckpt_dir / "best.pt")
 
         # Cầu chì phân kỳ (§5.1: dừng nếu loss NaN hoặc F1 Dev < 30% sau epoch 20)
-        if ep >= 20 and f1_fine < 30.0:
-            print(f"\n[CẦU CHÌ KÍCH HOẠT] F1 Dev ({f1_fine:.2f}%) quá thấp sau 20 epoch. Dừng tiến trình để tránh lãng phí GPU.")
+        monitored_f1 = f1_coarse if args.direct_3class else f1_fine
+        if ep >= 20 and monitored_f1 < 30.0:
+            print(f"\n[CẦU CHÌ KÍCH HOẠT] F1 Dev ({monitored_f1:.2f}%) quá thấp sau 20 epoch. Dừng tiến trình để tránh lãng phí GPU.")
             break
 
         print(

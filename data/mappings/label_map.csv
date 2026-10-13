@@ -1,6 +1,6 @@
 # label_map.csv
 # Bảng ánh xạ 30 lớp nhãn mịn (Household & Recyclable Waste) sang 3 nhóm quyết định Canteen
-# Phiên bản: 2.0 (Khóa theo Kế hoạch MASTER v9.5 §3.1)
+# Phiên bản: 2.1 (Bổ sung lớp background theo MASTER v10.0 §3.1 & §4.2)
 fine_id,fine_label,coarse_id,coarse_label,description
 0,aerosol_cans,1,recyclable,Bình xịt kim loại rỗng sạch
 1,aluminum_food_cans,1,recyclable,Hộp nhôm đựng thực phẩm sạch
@@ -32,3 +32,4 @@ fine_id,fine_label,coarse_id,coarse_label,description
 27,styrofoam_cups,2,other_landfill,Ly xốp dính thức uống
 28,styrofoam_food_containers,2,other_landfill,Hộp xốp đựng xôi cơm dính dầu mỡ
 29,tea_bags,0,organic,Túi lọc trà bã trà
+30,background,3,background,Vùng nền khay ăn mặt bàn vật dụng không phải rác hoặc dương tính giả từ detector
