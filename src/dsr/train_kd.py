@@ -78,7 +78,7 @@ def parse_args():
     parser.add_argument("--alpha", type=float, default=1.0, help="Trọng số KD loss trong vanilla_kd / hybrid (default: 1.0)")
     parser.add_argument("--alpha-tckd", type=float, default=1.0, help="Trọng số TCKD trong DKD (default: 1.0)")
     parser.add_argument("--beta-nckd", type=float, default=1.0, help="Trọng số NCKD trong DKD (default: 1.0)")
-    parser.add_argument("--beta-at", type=float, default=1000.0, help="Trọng số Attention Transfer loss (default: 1000.0)")
+    parser.add_argument("--beta-at", type=float, default=2.0, help="Trọng số Attention Transfer loss (default: 2.0; hiệu chỉnh từ 1000.0 do map đã chuẩn hóa L2)")
 
     # Siêu tham số tối ưu hóa
     parser.add_argument("--epochs", type=int, default=40, help="Số epoch huấn luyện (default: 40)")

@@ -5,9 +5,12 @@ hoạt động 100% trơn tru trên GPU RTX 4050 với Teacher ResNet50 đã đ�
 """
 
 import sys
+import io
 from pathlib import Path
 import torch
 import torch.nn as nn
+
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 sys.path.insert(0, "src")
 from dsr.models import create_model
@@ -74,7 +77,7 @@ def run_smoke_test():
             logits_T = teacher(images)
         loss_ce = criterion_ce(logits_S, labels)
         loss_at = attention_transfer_loss(student_hook.features, teacher_hook.features)
-        total_loss = loss_ce + 1000.0 * loss_at
+        total_loss = loss_ce + 2.0 * loss_at
     scaler.scale(total_loss).backward()
     print(f"  [PASS] M3 Loss: {total_loss.item():.4f} (CE={loss_ce.item():.4f}, AT={loss_at.item():.6f})")
 
@@ -89,7 +92,7 @@ def run_smoke_test():
         loss_ce = criterion_ce(logits_S, labels)
         loss_kd = kd_loss(logits_S, logits_T, tau=3.0)
         loss_at = attention_transfer_loss(student_hook.features, teacher_hook.features)
-        total_loss = loss_ce + 1.0 * loss_kd + 1000.0 * loss_at
+        total_loss = loss_ce + 1.0 * loss_kd + 2.0 * loss_at
     scaler.scale(total_loss).backward()
     print(f"  [PASS] M4 Loss: {total_loss.item():.4f} (CE={loss_ce.item():.4f}, KD={loss_kd.item():.4f}, AT={loss_at.item():.6f})")
 

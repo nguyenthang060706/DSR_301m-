@@ -18,7 +18,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 def main():
     parser = argparse.ArgumentParser(description="Tự động sinh box gợi ý cho ảnh khay canteen")
-    parser.add_argument("--model", type=str, default="runs/detect/runs/detect/pilot_d1_taco/weights/best.pt", help="Đường dẫn checkpoint detector")
+    parser.add_argument("--model", type=str, default="models/checkpoints/d1b_combined_best.pt", help="Đường dẫn checkpoint detector")
     parser.add_argument("--source", type=str, default="data/raw/canteen_trays", help="Thư mục chứa ảnh khay mới chụp")
     parser.add_argument("--out_labels", type=str, default="data/raw/canteen_prelabels", help="Thư mục lưu nhãn gợi ý txt")
     parser.add_argument("--conf", type=float, default=0.25, help="Ngưỡng confidence tối thiểu")

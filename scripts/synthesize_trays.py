@@ -129,32 +129,70 @@ def main():
 
 
     out_path = Path(args.output_dir)
-    img_out = out_path / "images" / "train"
-    lbl_out = out_path / "labels" / "train"
-    img_out.mkdir(parents=True, exist_ok=True)
-    lbl_out.mkdir(parents=True, exist_ok=True)
+    train_img_out = out_path / "images" / "train"
+    train_lbl_out = out_path / "labels" / "train"
+    val_img_out = out_path / "images" / "val"
+    val_lbl_out = out_path / "labels" / "val"
 
-    # Tạo một số background nhân tạo (hoặc dùng ảnh canteen nếu có)
-    print(f"[*] Đang sinh {args.num_images} ảnh khay nhân tạo...")
+    for d in [train_img_out, train_lbl_out, val_img_out, val_lbl_out]:
+        d.mkdir(parents=True, exist_ok=True)
+
+    # Nạp ảnh nền canteen thật nếu có, ngược lại dùng bảng màu đa dạng
+    bg_dir = Path("data/raw/canteen_backgrounds")
+    real_bgs = []
+    if bg_dir.exists():
+        real_bgs = list(bg_dir.glob("*.jpg")) + list(bg_dir.glob("*.png"))
+
+    val_count = int(args.num_images * 0.15)
+    train_count = args.num_images - val_count
+
+    print(f"[*] Đang sinh {args.num_images} ảnh khay nhân tạo ({train_count} train, {val_count} val)...")
+    
+    bg_colors = [
+        (210, 215, 220),  # khay nhựa ghi sáng
+        (185, 190, 195),  # khay inox mờ
+        (225, 215, 195),  # mặt bàn gỗ melamine vàng nhạt
+        (240, 240, 242),  # mặt bàn nhựa trắng
+        (160, 165, 170),  # khay inox xám đậm
+        (205, 195, 180),  # mặt bàn canteen gỗ sồi
+    ]
+
     for idx in range(args.num_images):
-        # Tạo canvas màu giả lập bàn/khay (màu ghi xám, inox hoặc gỗ nhạt)
-        bg_color = random.choice([
-            (210, 215, 220), # khay nhựa ghi
-            (190, 195, 200), # khay inox mờ
-            (225, 215, 195), # mặt bàn gỗ melamine
-            (240, 240, 242), # mặt bàn nhựa trắng
-        ])
-        bg = Image.new("RGB", (640, 640), color=bg_color)
+        split = "val" if idx < val_count else "train"
+        target_img_dir = val_img_out if split == "val" else train_img_out
+        target_lbl_dir = val_lbl_out if split == "val" else train_lbl_out
 
-        num_objs = random.randint(3, 6)
+        if real_bgs and random.random() < 0.5:
+            try:
+                bg = Image.open(random.choice(real_bgs)).convert("RGB")
+            except Exception:
+                bg = Image.new("RGB", (640, 640), color=random.choice(bg_colors))
+        else:
+            bg = Image.new("RGB", (640, 640), color=random.choice(bg_colors))
+
+        num_objs = random.randint(3, 7)
         tray_img, labels = generate_synthetic_tray(bg, all_obj_paths, num_objects=num_objs)
 
         file_stem = f"synth_tray_{idx:05d}"
-        tray_img.save(img_out / f"{file_stem}.jpg", quality=90)
-        with open(lbl_out / f"{file_stem}.txt", "w", encoding="utf-8") as f:
+        tray_img.save(target_img_dir / f"{file_stem}.jpg", quality=90)
+        with open(target_lbl_dir / f"{file_stem}.txt", "w", encoding="utf-8") as f:
             f.write("\n".join(labels) + "\n")
 
-    print(f"[THÀNH CÔNG] Đã sinh {args.num_images} ảnh và nhãn tại: {out_path}")
+    # Tạo data.yaml cho synthetic trays
+    yaml_content = f"""# Synthetic Trays Dataset Configuration
+path: {out_path.resolve().as_posix()}
+train: images/train
+val: images/val
+
+# Classes
+names:
+  0: waste
+"""
+    with open(out_path / "data.yaml", "w", encoding="utf-8") as f:
+        f.write(yaml_content)
+
+    print(f"[THÀNH CÔNG] Đã sinh {args.num_images} ảnh khay ({train_count} train, {val_count} val).")
+    print(f"[*] Đã tạo cấu hình YOLO tại: {out_path / 'data.yaml'}")
 
 if __name__ == "__main__":
     main()
