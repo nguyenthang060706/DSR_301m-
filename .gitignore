@@ -12,3 +12,10 @@ runs/
 checkpoints/
 artifacts/
 .venv/
+*.zip
+
+# Raw image folders in data
+data/01_huu_co/
+data/02_tai_che_kho/
+data/03_con_lai/
+data/04_khong_ro_hoac_khay_trong/
