@@ -1,0 +1,7 @@
+[
+  {"name": "hybrid_t3_a1.0_b2.0", "temperature": 3.0, "alpha": 1.0, "beta_at": 2.0},
+  {"name": "hybrid_t3_a1.0_b1.0", "temperature": 3.0, "alpha": 1.0, "beta_at": 1.0},
+  {"name": "hybrid_t3_a0.5_b2.0", "temperature": 3.0, "alpha": 0.5, "beta_at": 2.0},
+  {"name": "hybrid_t3_a1.0_b4.0", "temperature": 3.0, "alpha": 1.0, "beta_at": 4.0},
+  {"name": "hybrid_t4_a1.0_b2.0", "temperature": 4.0, "alpha": 1.0, "beta_at": 2.0}
+]

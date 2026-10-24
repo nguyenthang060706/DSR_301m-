@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import csv
 from pathlib import Path
+import time
 from sklearn.metrics import cohen_kappa_score, confusion_matrix
 import numpy as np
 

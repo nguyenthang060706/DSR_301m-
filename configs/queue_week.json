@@ -1,0 +1,236 @@
+[
+  {
+    "id": "Q01",
+    "name": "tune_dkd",
+    "cmd": "python scripts/tune_kd.py --method dkd",
+    "depends_on": [],
+    "expect": "reports/tune_dkd_summary.csv",
+    "est_h": 2.7,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q02",
+    "name": "m0_resnet18_seed2",
+    "cmd": "python -m dsr.train --model resnet18 --run-name m0_resnet18_s20261002 --label-smoothing 0.1 --seed 20261002",
+    "depends_on": [],
+    "expect": "reports/m0_resnet18_s20261002_history.csv",
+    "est_h": 0.65,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q03",
+    "name": "m0_resnet18_seed3",
+    "cmd": "python -m dsr.train --model resnet18 --run-name m0_resnet18_s20261003 --label-smoothing 0.1 --seed 20261003",
+    "depends_on": [],
+    "expect": "reports/m0_resnet18_s20261003_history.csv",
+    "est_h": 0.65,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q04",
+    "name": "main_m1b_dkd_s1",
+    "cmd": "python -m dsr.train_kd --kd-method dkd --run-name m1b_dkd_s20261001 --seed 20261001",
+    "depends_on": ["Q01"],
+    "expect": "reports/m1b_dkd_s20261001_history.csv",
+    "est_h": 1.4,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q05",
+    "name": "train_d1a_taco",
+    "cmd": "python scripts/train_d1_taco.py --name d1a_taco",
+    "depends_on": [],
+    "expect": "runs/detect/d1a_taco/weights/best.pt",
+    "est_h": 0.6,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q06",
+    "name": "tune_vanilla_kd",
+    "cmd": "python scripts/tune_kd.py --method vanilla_kd",
+    "depends_on": [],
+    "expect": "reports/tune_vanilla_kd_summary.csv",
+    "est_h": 2.7,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q07",
+    "name": "main_m1_hinton_s1",
+    "cmd": "python -m dsr.train_kd --kd-method vanilla_kd --run-name m1_hinton_s20261001 --seed 20261001",
+    "depends_on": ["Q06"],
+    "expect": "reports/m1_hinton_s20261001_history.csv",
+    "est_h": 1.4,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q08",
+    "name": "tune_attention_transfer",
+    "cmd": "python scripts/tune_kd.py --method attention_transfer",
+    "depends_on": [],
+    "expect": "reports/tune_attention_transfer_summary.csv",
+    "est_h": 2.7,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q09",
+    "name": "main_m3_at_s1",
+    "cmd": "python -m dsr.train_kd --kd-method attention_transfer --run-name m3_at_s20261001 --seed 20261001",
+    "depends_on": ["Q08"],
+    "expect": "reports/m3_at_s20261001_history.csv",
+    "est_h": 1.4,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q10",
+    "name": "tune_hybrid",
+    "cmd": "python scripts/tune_kd.py --method hybrid",
+    "depends_on": [],
+    "expect": "reports/tune_hybrid_summary.csv",
+    "est_h": 2.7,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q11",
+    "name": "main_m4_hybrid_s1",
+    "cmd": "python -m dsr.train_kd --kd-method hybrid --run-name m4_hybrid_s20261001 --seed 20261001",
+    "depends_on": ["Q10"],
+    "expect": "reports/m4_hybrid_s20261001_history.csv",
+    "est_h": 1.4,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q12",
+    "name": "tune_fitnet",
+    "cmd": "python scripts/tune_kd.py --method fitnet",
+    "depends_on": [],
+    "expect": "reports/tune_fitnet_summary.csv",
+    "est_h": 2.7,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q13",
+    "name": "main_m2_fitnet_s1",
+    "cmd": "python -m dsr.train_kd --kd-method fitnet --run-name m2_fitnet_s20261001 --seed 20261001",
+    "depends_on": ["Q12"],
+    "expect": "reports/m2_fitnet_s20261001_history.csv",
+    "est_h": 1.4,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q14",
+    "name": "main_seed2_batch",
+    "cmd": "python -m dsr.train_kd --kd-method vanilla_kd --run-name m1_hinton_s20261002 --seed 20261002",
+    "depends_on": ["Q04", "Q07", "Q09", "Q11", "Q13"],
+    "expect": "reports/m1_hinton_s20261002_history.csv",
+    "est_h": 7.0,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q15",
+    "name": "eval_detect_e3a_e3b",
+    "cmd": "python scripts/eval_detector.py --weights runs/detect/d1a_taco/weights/best.pt --split val",
+    "depends_on": ["Q05"],
+    "expect": "runs/detect/e3a/weights/best.pt",
+    "est_h": 1.3,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q16",
+    "name": "train_e3c_e3d",
+    "cmd": "python scripts/eval_detector.py --weights runs/detect/e3a/weights/best.pt --split val",
+    "depends_on": ["Q15"],
+    "expect": "runs/detect/e3c_s20261001/weights/best.pt",
+    "est_h": 2.5,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q17",
+    "name": "main_seed3_batch",
+    "cmd": "python -m dsr.train_kd --kd-method vanilla_kd --run-name m1_hinton_s20261003 --seed 20261003",
+    "depends_on": ["Q14"],
+    "expect": "reports/m1_hinton_s20261003_history.csv",
+    "est_h": 7.0,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q18",
+    "name": "train_d2_yolo_3cls",
+    "cmd": "python scripts/train_d1b_combined.py --name d2_s20261001",
+    "depends_on": [],
+    "expect": "runs/detect/d2_s20261001/weights/best.pt",
+    "est_h": 2.0,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q19",
+    "name": "eval_e3_curve",
+    "cmd": "python scripts/eval_detector.py --weights runs/detect/e3c_s20261001/weights/best.pt --split val",
+    "depends_on": ["Q16"],
+    "expect": "runs/detect/e3curve_50_s20261001/weights/best.pt",
+    "est_h": 2.0,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q20",
+    "name": "train_tier_b_baselines",
+    "cmd": "python -m dsr.train --model mobilenet_v3_small --run-name tierb_m0_s20261001 --label-smoothing 0.1 --seed 20261001",
+    "depends_on": ["Q06"],
+    "expect": "reports/tierb_m0_s20261001_history.csv",
+    "est_h": 5.4,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q21",
+    "name": "phase2_background_tier_a",
+    "cmd": "python scripts/finetune_background.py --method vanilla_kd",
+    "depends_on": ["Q17"],
+    "expect": "reports/phase2_m0_s20261001_history.csv",
+    "est_h": 2.0,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q22",
+    "name": "tier_b_kd_and_phase2",
+    "cmd": "python -m dsr.train_kd --kd-method vanilla_kd --student-model mobilenet_v3_small --run-name tierb_m1_s20261001 --seed 20261001",
+    "depends_on": ["Q17", "Q20"],
+    "expect": "reports/tierb_m1_s20261001_history.csv",
+    "est_h": 3.5,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q23",
+    "name": "fewshot_tier_a",
+    "cmd": "python scripts/few_shot_finetune.py --split val",
+    "depends_on": ["Q17"],
+    "expect": "reports/fewshot_val.csv",
+    "est_h": 1.5,
+    "kind": "gpu"
+  },
+  {
+    "id": "Q24",
+    "name": "eval_ood_benchmarks",
+    "cmd": "python scripts/eval_holdout.py --dataset realwaste",
+    "depends_on": ["Q15", "Q16", "Q21"],
+    "expect": "reports/ood_summary.csv",
+    "est_h": 0.3,
+    "kind": "cpu"
+  },
+  {
+    "id": "Q25",
+    "name": "export_onnx_int8",
+    "cmd": "python scripts/export_and_quantize_tier_b.py",
+    "depends_on": ["Q22"],
+    "expect": "deploy/onnx/d1_int8.onnx",
+    "est_h": 0.5,
+    "kind": "cpu"
+  },
+  {
+    "id": "Q26",
+    "name": "eval_test_once",
+    "cmd": "python scripts/eval_test_once.py",
+    "depends_on": ["Q25"],
+    "expect": "reports/test_open_log.json",
+    "est_h": 1.0,
+    "kind": "gpu"
+  }
+]

@@ -1,0 +1,7 @@
+[
+  {"name": "dkd_cfg1_t3_a1_b1", "temperature": 3.0, "alpha_tckd": 1.0, "beta_nckd": 1.0},
+  {"name": "dkd_cfg2_t3_a0.5_b2", "temperature": 3.0, "alpha_tckd": 0.5, "beta_nckd": 2.0},
+  {"name": "dkd_cfg3_t3_a1_b2", "temperature": 3.0, "alpha_tckd": 1.0, "beta_nckd": 2.0},
+  {"name": "dkd_cfg4_t4_a1_b4", "temperature": 4.0, "alpha_tckd": 1.0, "beta_nckd": 4.0},
+  {"name": "dkd_cfg5_t3_a0.5_b4", "temperature": 3.0, "alpha_tckd": 0.5, "beta_nckd": 4.0}
+]

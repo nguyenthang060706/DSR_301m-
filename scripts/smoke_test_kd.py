@@ -14,7 +14,13 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 sys.path.insert(0, "src")
 from dsr.models import create_model
-from dsr.losses import kd_loss, dkd_loss, attention_transfer_loss
+from dsr.losses import (
+    FitNetRegressor,
+    attention_transfer_loss,
+    dkd_loss,
+    fitnet_loss,
+    kd_loss,
+)
 from dsr.train_kd import load_teacher, register_stage_hooks
 
 def run_smoke_test():
@@ -96,9 +102,27 @@ def run_smoke_test():
     scaler.scale(total_loss).backward()
     print(f"  [PASS] M4 Loss: {total_loss.item():.4f} (CE={loss_ce.item():.4f}, KD={loss_kd.item():.4f}, AT={loss_at.item():.6f})")
 
+    # Test M2: FitNet (Hint-based Distillation at layer3)
+    print("\n--- Test M2: FitNet (Hint-based at layer3) ---")
+    student.zero_grad()
+    student_hook.clear(); teacher_hook.clear()
+    regressor = FitNetRegressor(in_channels=256, out_channels=1024).to(device)
+    with torch.amp.autocast('cuda'):
+        logits_S = student(images)
+        with torch.no_grad():
+            logits_T = teacher(images)
+        loss_ce = criterion_ce(logits_S, labels)
+        s_feat = student_hook.features[2]
+        t_feat = teacher_hook.features[2]
+        loss_fitnet = fitnet_loss(s_feat, t_feat, regressor)
+        total_loss = loss_ce + 1.0 * loss_fitnet
+    scaler.scale(total_loss).backward()
+    print(f"  [PASS] M2 Loss: {total_loss.item():.4f} (CE={loss_ce.item():.4f}, FitNet={loss_fitnet.item():.4f})")
+
     print("\n" + "=" * 65)
-    print("✅ TOÀN BỘ CÁC CƠ CHẾ KD ĐỀU PASS SMOKE TEST TRÊN GPU!")
+    print("✅ TOÀN BỘ 5 CƠ CHẾ KD (M1, M1b, M3, M4, M2) ĐỀU PASS SMOKE TEST TRÊN GPU!")
     print("=" * 65)
 
 if __name__ == "__main__":
     run_smoke_test()
+

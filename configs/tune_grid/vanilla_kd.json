@@ -1,0 +1,7 @@
+[
+  {"name": "vanilla_kd_t3_a1.0", "temperature": 3.0, "alpha": 1.0},
+  {"name": "vanilla_kd_t2_a1.0", "temperature": 2.0, "alpha": 1.0},
+  {"name": "vanilla_kd_t4_a1.0", "temperature": 4.0, "alpha": 1.0},
+  {"name": "vanilla_kd_t6_a1.0", "temperature": 6.0, "alpha": 1.0},
+  {"name": "vanilla_kd_t3_a0.5", "temperature": 3.0, "alpha": 0.5}
+]

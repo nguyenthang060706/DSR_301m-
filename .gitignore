@@ -12,7 +12,9 @@ runs/
 checkpoints/
 artifacts/
 .venv/
-*.zip
+scratch/
+*.pt
+!data/checkpoints/bread_detector.pt
 
 # Raw image folders in data
 data/01_huu_co/

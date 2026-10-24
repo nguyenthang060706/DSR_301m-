@@ -22,3 +22,13 @@ tqdm==4.70.1
 # Edge Deployment & Export
 onnx>=1.16.0
 onnxruntime>=1.18.0
+
+# Testing & Quality Assurance
+pytest==9.1.1
+
+# Object Detection (Note: Ultralytics is licensed under AGPL-3.0)
+ultralytics==8.4.171
+
+# Tray Synthesis & Image Utilities
+rembg>=2.0.50
+imagehash>=4.3.1

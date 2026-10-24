@@ -1,0 +1,7 @@
+[
+  {"name": "at_beta_0.5", "beta_at": 0.5},
+  {"name": "at_beta_1.0", "beta_at": 1.0},
+  {"name": "at_beta_2.0", "beta_at": 2.0},
+  {"name": "at_beta_4.0", "beta_at": 4.0},
+  {"name": "at_beta_8.0", "beta_at": 8.0}
+]

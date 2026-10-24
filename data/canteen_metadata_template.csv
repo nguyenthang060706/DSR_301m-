@@ -1,6 +1,6 @@
-image_id,cluster_id,date,device,annotator_1,annotator_2,final_label,note
-canteen_001.jpg,20261006_trua_hopxop,2026-10-06,phone_camera,other_landfill,other_landfill,other_landfill,Hop xop dinh dau mo
-canteen_002.jpg,20261006_trua_chaipet,2026-10-06,phone_camera,recyclable,recyclable,recyclable,Chai nuoc suoi sach da uong can
-canteen_003.jpg,20261006_trua_comthua,2026-10-06,phone_camera,organic,organic,organic,Com va thuc an thua tren khay
-canteen_004.jpg,20261006_trua_lytratasu,2026-10-06,phone_camera,other_landfill,other_landfill,other_landfill,Ly nhua con tran chau va nuoc da
-canteen_005.jpg,20261006_trua_lonnhom,2026-10-06,phone_camera,recyclable,recyclable,recyclable,Lon coca da uong can sach rao
+image_id,cluster_id,date,device,annotator_1,annotator_2,num_boxes,ambiguous,note
+canteen_001.jpg,20261006_trua,2026-10-06,phone_camera,annotator_a,annotator_b,3,0,Khay an trua: com thuc an hop xop muong nhua
+canteen_002.jpg,20261006_trua,2026-10-06,phone_camera,annotator_a,annotator_b,2,0,Chai PET va lon nhom
+canteen_003.jpg,20261006_trua,2026-10-06,phone_camera,annotator_a,annotator_b,4,0,Dia com canh rau va ly giay
+canteen_004.jpg,20261006_chieu,2026-10-06,phone_camera,annotator_a,annotator_b,1,0,Hop xop an vat dính dau mo
+canteen_005.jpg,20261006_chieu,2026-10-06,phone_camera,annotator_a,annotator_b,2,0,Ly tra tac va ong hut nhua

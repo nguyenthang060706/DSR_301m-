@@ -35,12 +35,18 @@ from dsr.data import (
     load_label_map,
     read_split_csv,
 )
-from dsr.losses import attention_transfer_loss, dkd_loss, kd_loss
+from dsr.losses import (
+    FitNetRegressor,
+    attention_transfer_loss,
+    dkd_loss,
+    fitnet_loss,
+    kd_loss,
+)
 from dsr.models import create_model
 
 
 class FeatureHook:
-    """Hook để trích xuất feature maps từ các stage của ResNet phục vụ Attention Transfer."""
+    """Hook để trích xuất feature maps từ các stage của ResNet phục vụ Attention Transfer và FitNet."""
     def __init__(self):
         self.features: list[torch.Tensor] = []
 
@@ -65,8 +71,8 @@ def register_stage_hooks(model: nn.Module) -> FeatureHook:
 def parse_args():
     parser = argparse.ArgumentParser(description="DSR Modern Knowledge Distillation Training (V9.5)")
     parser.add_argument("--kd-method", type=str, required=True, 
-                        choices=["vanilla_kd", "dkd", "attention_transfer", "hybrid"],
-                        help="Phương pháp KD: vanilla_kd, dkd, attention_transfer, hybrid")
+                        choices=["vanilla_kd", "dkd", "attention_transfer", "hybrid", "fitnet"],
+                        help="Phương pháp KD: vanilla_kd, dkd, attention_transfer, hybrid, fitnet")
     parser.add_argument("--student-model", type=str, default="resnet18", help="Kiến trúc Student (default: resnet18)")
     parser.add_argument("--teacher-model", type=str, default="resnet50", help="Kiến trúc Teacher (default: resnet50)")
     parser.add_argument("--teacher-ckpt", type=Path, default=Path("checkpoints/teacher_resnet50_clean/best.pt"),
@@ -79,6 +85,7 @@ def parse_args():
     parser.add_argument("--alpha-tckd", type=float, default=1.0, help="Trọng số TCKD trong DKD (default: 1.0)")
     parser.add_argument("--beta-nckd", type=float, default=1.0, help="Trọng số NCKD trong DKD (default: 1.0)")
     parser.add_argument("--beta-at", type=float, default=2.0, help="Trọng số Attention Transfer loss (default: 2.0; hiệu chỉnh từ 1000.0 do map đã chuẩn hóa L2)")
+    parser.add_argument("--lambda-fitnet", type=float, default=1.0, help="Trọng số FitNet hint loss tại layer3 (default: 1.0)")
 
     # Siêu tham số tối ưu hóa
     parser.add_argument("--epochs", type=int, default=40, help="Số epoch huấn luyện (default: 40)")
@@ -101,12 +108,17 @@ def parse_args():
 
 def load_teacher(model_name: str, num_classes: int, ckpt_path: Path, device: torch.device) -> nn.Module:
     print(f"Nạp trọng số Teacher từ: {ckpt_path}")
-    teacher = create_model(model_name, num_classes=num_classes, pretrained=False)
-    state = torch.load(ckpt_path, map_location="cpu", weights_only=False)
-    if "model_state_dict" in state:
-        teacher.load_state_dict(state["model_state_dict"])
+    if ckpt_path.exists():
+        teacher = create_model(model_name, num_classes=num_classes, pretrained=False)
+        state = torch.load(ckpt_path, map_location="cpu", weights_only=False)
+        if "model_state_dict" in state:
+            teacher.load_state_dict(state["model_state_dict"])
+        else:
+            teacher.load_state_dict(state)
     else:
-        teacher.load_state_dict(state)
+        print(f"[WARN] Không tìm thấy {ckpt_path}, dùng trọng số khởi tạo pretrained ImageNet.")
+        teacher = create_model(model_name, num_classes=num_classes, pretrained=True)
+
     teacher = teacher.to(device, memory_format=torch.channels_last)
     teacher.eval()
     for p in teacher.parameters():
@@ -169,15 +181,35 @@ def main():
     student = create_model(args.student_model, num_classes=num_fine_classes, pretrained=True)
     student = student.to(device, memory_format=torch.channels_last)
 
-    # Hooks cho Attention Transfer nếu phương pháp yêu cầu
-    need_hooks = args.kd_method in ["attention_transfer", "hybrid"]
+    # Hooks cho Attention Transfer và FitNet nếu phương pháp yêu cầu
+    need_hooks = args.kd_method in ["attention_transfer", "hybrid", "fitnet"]
+    regressor = None
     if need_hooks:
         student_hook = register_stage_hooks(student)
         teacher_hook = register_stage_hooks(teacher)
-        print("Đã đăng ký stage hooks cho Student và Teacher phục vụ Attention Transfer.")
+        if args.kd_method == "fitnet":
+            student.eval()
+            teacher.eval()
+            with torch.no_grad():
+                dummy = torch.zeros(1, 3, 224, 224, device=device)
+                student(dummy)
+                teacher(dummy)
+                s_channels = student_hook.features[2].shape[1]
+                t_channels = teacher_hook.features[2].shape[1]
+            student_hook.clear()
+            teacher_hook.clear()
+            student.train()
+            regressor = FitNetRegressor(s_channels, t_channels).to(device)
+            print(f"Đã khởi tạo FitNetRegressor 1x1 conv layer3: {s_channels} -> {t_channels}.")
+        else:
+            print("Đã đăng ký stage hooks cho Student và Teacher phục vụ Attention Transfer.")
+
+    opt_params = list(student.parameters())
+    if regressor is not None:
+        opt_params += list(regressor.parameters())
 
     optimizer = torch.optim.SGD(
-        student.parameters(),
+        opt_params,
         lr=args.lr,
         momentum=0.9,
         weight_decay=args.weight_decay,
@@ -201,6 +233,8 @@ def main():
 
         # --- HUẤN LUYỆN ---
         student.train()
+        if regressor is not None:
+            regressor.train()
         running_total_loss = 0.0
         running_ce_loss = 0.0
         running_kd_loss = 0.0
@@ -242,6 +276,11 @@ def main():
                     loss_at = attention_transfer_loss(student_hook.features, teacher_hook.features)
                     loss_kd_val = args.alpha * loss_hinton + args.beta_at * loss_at
                     loss = loss_ce + loss_kd_val
+                elif args.kd_method == "fitnet":
+                    s_feat = student_hook.features[2]
+                    t_feat = teacher_hook.features[2]
+                    loss_kd_val = fitnet_loss(s_feat, t_feat, regressor)
+                    loss = loss_ce + args.lambda_fitnet * loss_kd_val
                 else:
                     raise ValueError(f"Phương pháp KD không hợp lệ: {args.kd_method}")
 
@@ -263,6 +302,8 @@ def main():
 
         # --- ĐÁNH GIÁ TRÊN TẬP DEV ---
         student.eval()
+        if regressor is not None:
+            regressor.eval()
         dev_loss = 0.0
         dev_samples = 0
         y_true_fine = []
@@ -300,7 +341,7 @@ def main():
         is_best = f1_fine > best_fine_f1
         if is_best:
             best_fine_f1 = f1_fine
-            torch.save({
+            best_ckpt = {
                 "epoch": ep,
                 "model_state_dict": student.state_dict(),
                 "f1_fine": f1_fine,
@@ -308,7 +349,10 @@ def main():
                 "model_name": args.student_model,
                 "num_classes": num_fine_classes,
                 "kd_method": args.kd_method,
-            }, ckpt_dir / "best.pt")
+            }
+            if regressor is not None:
+                best_ckpt["regressor_state_dict"] = regressor.state_dict()
+            torch.save(best_ckpt, ckpt_dir / "best.pt")
 
         # Cầu chì phân kỳ (§5.1: dừng nếu sau 20 epoch mà Dev Fine F1 < 30%)
         if ep >= 20 and f1_fine < 30.0:
@@ -338,13 +382,16 @@ def main():
         })
 
     # Lưu checkpoint last
-    torch.save({
-        "epoch": int(history[-1]["epoch"]),
+    last_ckpt = {
+        "epoch": int(history[-1]["epoch"]) if history else args.epochs,
         "model_state_dict": student.state_dict(),
-        "final_f1_fine": history[-1]["dev_fine_f1"],
+        "final_f1_fine": history[-1]["dev_fine_f1"] if history else "0.0",
         "model_name": args.student_model,
         "kd_method": args.kd_method,
-    }, ckpt_dir / "last.pt")
+    }
+    if regressor is not None:
+        last_ckpt["regressor_state_dict"] = regressor.state_dict()
+    torch.save(last_ckpt, ckpt_dir / "last.pt")
 
     # Ghi toàn bộ lịch sử ra CSV
     fieldnames = [

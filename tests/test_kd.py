@@ -61,6 +61,22 @@ def test_attention_transfer_properties():
     assert abs(zero_loss.item()) < 1e-5, f"AT loss for identical features must be 0, got {zero_loss.item()}"
 
 
+def test_fitnet_loss_properties():
+    from dsr.losses import FitNetRegressor, fitnet_loss
+    torch.manual_seed(42)
+    s_feat = torch.randn(4, 256, 14, 14)
+    t_feat = torch.randn(4, 1024, 14, 14)
+    regressor = FitNetRegressor(in_channels=256, out_channels=1024)
+
+    loss = fitnet_loss(s_feat, t_feat, regressor)
+    assert torch.isfinite(loss), "FitNet loss must be finite"
+    assert loss.item() >= 0.0, "FitNet loss must be non-negative"
+
+    # Self distillation without regressor
+    self_loss = fitnet_loss(s_feat, s_feat, regressor=None)
+    assert abs(self_loss.item()) < 1e-6, f"FitNet self-loss must be zero, got {self_loss.item()}"
+
+
 if __name__ == "__main__":
     print("Testing kd_loss...")
     test_kd_loss_formula_and_properties()

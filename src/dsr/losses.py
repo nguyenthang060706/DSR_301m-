@@ -129,3 +129,40 @@ def attention_transfer_loss(
         qt = attention_map(ft, size=fs.shape[-2:]).detach()
         loss = loss + 0.5 * (qs - qt).pow(2).sum(dim=1).mean()
     return loss
+
+
+class FitNetRegressor(nn.Module):
+    """1x1 Convolution regressor for FitNet intermediate feature alignment (Romero et al., 2015).
+
+    Single-stage variant per MASTER v10.0 §D6 & D1-C4.
+    Maps student intermediate feature channels to teacher intermediate feature channels at layer3.
+    """
+
+    def __init__(self, in_channels: int, out_channels: int) -> None:
+        super().__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
+        self.bn = nn.BatchNorm2d(out_channels)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.bn(self.conv(x))
+
+
+def fitnet_loss(
+    student_feat: torch.Tensor,
+    teacher_feat: torch.Tensor,
+    regressor: nn.Module | None = None,
+) -> torch.Tensor:
+    """FitNet hint-based feature distillation loss (Romero et al., 2015).
+
+    L_FitNet = 0.5 * MSE(regressor(student_feat), teacher_feat.detach())
+    """
+    if regressor is not None:
+        student_feat = regressor(student_feat)
+
+    if student_feat.shape[-2:] != teacher_feat.shape[-2:]:
+        student_feat = F.interpolate(
+            student_feat, size=teacher_feat.shape[-2:], mode="bilinear", align_corners=False
+        )
+
+    return 0.5 * F.mse_loss(student_feat, teacher_feat.detach(), reduction="mean")
+

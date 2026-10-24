@@ -14,14 +14,21 @@ def read_split_csv(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(f))
 
 
-def load_label_map(path: Path) -> tuple[dict[str, int], dict[int, int], list[str], list[str]]:
+def load_label_map(
+    path: Path,
+    include_background: bool = False,
+) -> tuple[dict[str, int], dict[int, int], list[str], list[str]]:
     """Loads label_map.csv defining fine-grained to coarse 3-class mapping.
+
+    Args:
+        path: Path to label map CSV file.
+        include_background: If False, ignores background class (id 30 / coarse 3). Default is False.
 
     Returns:
         fine_name_to_id: dict[str, int]
         fine_to_coarse_id: dict[int, int]
         fine_classes: list[str]
-        coarse_classes: list[str] (length 3: ['organic', 'recyclable', 'other_landfill'])
+        coarse_classes: list[str] (length 3: ['organic', 'recyclable', 'other_landfill'] or 4 if background included)
     """
     fine_name_to_id: dict[str, int] = {}
     fine_to_coarse_id: dict[int, int] = {}
@@ -38,6 +45,9 @@ def load_label_map(path: Path) -> tuple[dict[str, int], dict[int, int], list[str
             f_name = row["fine_label"].strip()
             c_id = int(row["coarse_id"])
             c_name = row["coarse_label"].strip()
+
+            if not include_background and (f_name == "background" or f_id == 30 or c_id == 3):
+                continue
 
             fine_name_to_id[f_name] = f_id
             fine_to_coarse_id[f_id] = c_id
