@@ -91,6 +91,53 @@ def dkd_loss(
     return alpha * tckd + beta * nckd
 
 
+def dkd_components(
+    student_logits: torch.Tensor,
+    teacher_logits: torch.Tensor,
+    target: torch.Tensor,
+    temperature: float = 3.0,
+    eps: float = 1e-7,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Extract TCKD and NCKD components per sample (D2-C2).
+
+    Returns:
+        (tckd_per_sample, nckd_per_sample): each of shape (B,), scaled by T².
+
+    Note: mean(tckd + (1 - p_t^T) * nckd) should equal kd_loss(student, teacher, temperature)
+    when both are computed with the same T².
+    """
+    p_s = F.softmax(student_logits / temperature, dim=1)
+    p_t = F.softmax(teacher_logits / temperature, dim=1).detach()
+
+    batch_size, num_classes = student_logits.shape
+    device = student_logits.device
+
+    target_mask = torch.zeros(batch_size, num_classes, dtype=torch.bool, device=device)
+    target_mask.scatter_(1, target.unsqueeze(1), 1)
+
+    p_s_t = torch.sum(p_s * target_mask, dim=1, keepdim=True)  # (B, 1)
+    p_t_t = torch.sum(p_t * target_mask, dim=1, keepdim=True)  # (B, 1)
+
+    # TCKD per sample
+    p_s_t_c = p_s_t.clamp(eps, 1.0 - eps)
+    p_t_t_c = p_t_t.clamp(eps, 1.0 - eps)
+    tckd = (
+        p_t_t_c * (torch.log(p_t_t_c) - torch.log(p_s_t_c))
+        + (1.0 - p_t_t_c) * (torch.log(1.0 - p_t_t_c) - torch.log(1.0 - p_s_t_c))
+    ).sum(dim=1) * (temperature ** 2)  # (B,)
+
+    # NCKD per sample
+    non_target_mask = ~target_mask
+    denom_s = (1.0 - p_s_t).clamp(min=eps)
+    denom_t = (1.0 - p_t_t).clamp(min=eps)
+    p_s_nt = (p_s / denom_s).clamp(min=eps)
+    p_t_nt = (p_t / denom_t).clamp(min=eps)
+    kl_nt = p_t_nt * (torch.log(p_t_nt) - torch.log(p_s_nt))
+    nckd = (kl_nt * non_target_mask).sum(dim=1) * (temperature ** 2)  # (B,)
+
+    return tckd, nckd
+
+
 def attention_map(
     feat: torch.Tensor,
     size: tuple[int, int] | None = None,

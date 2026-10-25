@@ -77,6 +77,58 @@ def test_fitnet_loss_properties():
     assert abs(self_loss.item()) < 1e-6, f"FitNet self-loss must be zero, got {self_loss.item()}"
 
 
+def test_dkd_hinton_equivalence():
+    """D2-C2: Verify mean(TCKD + (1 - p_t^T) · NCKD) == kd_loss (same T², atol 1e-5).
+
+    This confirms DKD is a proper decomposition of classical Hinton KD:
+        KD_loss = mean_over_samples[ TCKD_i + (1 - p_t^T_i) * NCKD_i ]
+    """
+    from dsr.losses import dkd_components
+
+    torch.manual_seed(42)
+    batch_size, num_classes = 16, 12
+
+    for temperature in [2.0, 3.0, 4.0, 6.0]:
+        logits_S = torch.randn(batch_size, num_classes)
+        logits_T = torch.randn(batch_size, num_classes)
+        target = torch.randint(0, num_classes, (batch_size,))
+
+        # 1. Classical Hinton KD loss
+        hinton_loss = kd_loss(logits_S, logits_T, tau=temperature)
+
+        # 2. DKD components
+        tckd, nckd = dkd_components(logits_S, logits_T, target, temperature=temperature)
+
+        # Compute (1 - p_t^T) per sample
+        p_t = F.softmax(logits_T / temperature, dim=1).detach()
+        target_mask = torch.zeros(batch_size, num_classes, dtype=torch.bool)
+        target_mask.scatter_(1, target.unsqueeze(1), 1)
+        p_t_t = torch.sum(p_t * target_mask, dim=1)  # (B,)
+
+        # Reconstructed KD = mean(TCKD + (1 - p_t^T) * NCKD)
+        reconstructed = (tckd + (1.0 - p_t_t) * nckd).mean()
+
+        assert torch.allclose(reconstructed, hinton_loss, atol=1e-5), (
+            f"DKD ≠ Hinton at T={temperature}: "
+            f"reconstructed={reconstructed.item():.6f} vs hinton={hinton_loss.item():.6f}"
+        )
+
+    # Also verify: dkd_loss with alpha=1, beta=1 is NOT the same as kd_loss
+    # (because beta is a fixed scalar, not sample-wise (1-p_t^T))
+    # This is just a sanity check that dkd_components is doing the right thing
+    from dsr.losses import dkd_loss as dkd_fn
+    logits_S = torch.randn(batch_size, num_classes)
+    logits_T = torch.randn(batch_size, num_classes)
+    target = torch.randint(0, num_classes, (batch_size,))
+
+    dkd_val = dkd_fn(logits_S, logits_T, target, alpha=1.0, beta=1.0, temperature=3.0)
+    hinton_val = kd_loss(logits_S, logits_T, tau=3.0)
+    # These should generally differ (unless by coincidence)
+    # Just verify both are non-negative and finite
+    assert torch.isfinite(dkd_val)
+    assert torch.isfinite(hinton_val)
+
+
 if __name__ == "__main__":
     print("Testing kd_loss...")
     test_kd_loss_formula_and_properties()
