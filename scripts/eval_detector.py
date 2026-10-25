@@ -20,7 +20,13 @@ from pathlib import Path
 import torch
 import numpy as np
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+if __name__ == "__main__":
+    if sys.platform == "win32":
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+            sys.stderr.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
 
 
 def compute_iou(box1: np.ndarray, box2: np.ndarray) -> float:
@@ -74,6 +80,47 @@ def greedy_match(
 
     fn = len(gt_boxes) - len(matched_gt)
     return tp, fp, fn
+
+
+def evaluate_detections_at_conf(
+    predictions: dict[str, tuple[np.ndarray, np.ndarray]],
+    ground_truth: dict[str, np.ndarray],
+    conf_thresh: float = 0.25,
+    iou_thresh: float = 0.5,
+) -> dict[str, float]:
+    """Evaluate greedy matching across a dictionary of predictions and GT.
+
+    predictions: {stem: (pred_boxes_xyxy, pred_scores)}
+    ground_truth: {stem: gt_boxes_xyxy}
+    """
+    total_tp, total_fp, total_fn = 0, 0, 0
+    all_stems = set(predictions.keys()) | set(ground_truth.keys())
+    for stem in sorted(all_stems):
+        if stem in predictions:
+            boxes, scores = predictions[stem]
+            mask = scores >= conf_thresh
+            p_boxes = boxes[mask]
+            p_scores = scores[mask]
+        else:
+            p_boxes = np.empty((0, 4))
+            p_scores = np.empty((0,))
+        gt_boxes = ground_truth.get(stem, np.empty((0, 4)))
+        tp, fp, fn = greedy_match(p_boxes, p_scores, gt_boxes, iou_thresh)
+        total_tp += tp
+        total_fp += fp
+        total_fn += fn
+
+    precision = total_tp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else 0.0
+    recall = total_tp / (total_tp + total_fn) if (total_tp + total_fn) > 0 else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+    return {
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+        "tp": total_tp,
+        "fp": total_fp,
+        "fn": total_fn,
+    }
 
 
 def load_yolo_labels(label_dir: Path, img_dir: Path) -> dict[str, np.ndarray]:

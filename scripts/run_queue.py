@@ -16,6 +16,13 @@ import sys
 import time
 from pathlib import Path
 
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Experiment Queue Runner (Spec 8.2)")
