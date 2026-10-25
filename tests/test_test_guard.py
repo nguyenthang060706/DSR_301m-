@@ -85,3 +85,44 @@ def test_test_guard_bypass_with_env(mock_test_manifest, monkeypatch):
         "data/raw/canteen_trays/canteen_2024-07-20_1201_pre.png",
         manifest_path=mock_test_manifest,
     )
+
+
+def test_test_guard_blocks_date_plan_test_dates(tmp_path):
+    # Lớp 1: Chặn theo canteen_date_plan.json ngay cả khi chưa có manifest Test
+    plan_file = tmp_path / "canteen_date_plan.json"
+    plan_data = {
+        "test": ["2024-07-03", "2024-07-04"],
+        "val": ["2024-07-17"],
+        "pool": ["2024-06-27"],
+    }
+    with open(plan_file, "w", encoding="utf-8") as f:
+        json.dump(plan_data, f)
+
+    # Thử nạp ảnh thuộc ngày test 2024-07-03 -> phải raise RuntimeError
+    with pytest.raises(RuntimeError, match="thuộc ngày 2024-07-03 được chỉ định trong date-plan"):
+        assert_not_test(
+            "data/raw/canteen_trays/canteen_2024-07-03_1201_pre.png",
+            manifest_path=tmp_path / "nonexistent_manifest.json",
+            date_plan_path=plan_file,
+        )
+
+    # Ảnh thuộc ngày pool 2024-06-27 -> cho phép
+    assert_not_test(
+        "data/raw/canteen_trays/canteen_2024-06-27_1201_pre.png",
+        manifest_path=tmp_path / "nonexistent_manifest.json",
+        date_plan_path=plan_file,
+    )
+
+
+def test_test_guard_allows_metadata_and_dryrun_paths(tmp_path):
+    # Không chặn đọc file metadata
+    plan_file = tmp_path / "canteen_date_plan.json"
+    with open(plan_file, "w", encoding="utf-8") as f:
+        json.dump({"test": ["2024-07-03"]}, f)
+
+    assert_not_test(
+        "data/canteen_metadata.csv",
+        manifest_path=tmp_path / "nonexistent_manifest.json",
+        date_plan_path=plan_file,
+    )
+

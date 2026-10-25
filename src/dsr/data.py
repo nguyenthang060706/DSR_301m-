@@ -111,6 +111,11 @@ class WasteDataset(Dataset):
         self.fine_to_coarse_id = fine_to_coarse_id
         self.transform = transform
 
+        # D3-C2 / Spec 8.7: Machine-enforced test guard
+        from dsr.test_guard import assert_not_test
+        sample_paths = [r["path"] for r in rows[:100] if "path" in r]
+        assert_not_test(sample_paths)
+
     def __len__(self) -> int:
         return len(self.rows)
 

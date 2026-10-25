@@ -1,7 +1,12 @@
 from pathlib import Path
+import pytest
 from dsr.data import load_label_map, create_transforms, read_split_csv, WasteDataset
 
 
+@pytest.mark.skipif(
+    not Path("data/splits/public_train.csv").exists() or not Path("data/raw/household_waste_30").exists(),
+    reason="Requires data/splits/public_train.csv and data/raw/household_waste_30 (Gate 0 check)",
+)
 def test_public_dataset_loading():
     map_file = Path("data/mappings/label_map.csv")
     train_file = Path("data/splits/public_train.csv")
